@@ -3,4 +3,5 @@ target_sources(mccpp
         application.cc
         logger.cc
         main.cc
+        renderer.cc
 )

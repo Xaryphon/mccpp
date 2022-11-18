@@ -22,6 +22,7 @@ target_link_libraries(mccpp
         fmt::fmt
         glm
     PRIVATE
+        glad
 )
 
 add_subdirectory(src)
