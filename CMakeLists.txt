@@ -23,6 +23,9 @@ target_link_libraries(mccpp
         glm
     PRIVATE
         glad
+        imgui
+        imgui::sdl
+        imgui::gl
 )
 
 add_subdirectory(src)

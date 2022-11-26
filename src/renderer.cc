@@ -1,29 +1,21 @@
 #include "renderer.hh"
 
 #include <array>
-#include <vector>
 #include <fstream>
 #include <memory>
+#include <vector>
 
-#include <SDL.h>
 #include <glad/glad.h>
-
-#include <glm/vec3.hpp> // glm::vec3
-#include <glm/vec4.hpp> // glm::vec4
+#include <glm/ext.hpp>
+#include <glm/glm.hpp>
+#include <imgui_impl_opengl3.h>
+#include <imgui_impl_sdl.h>
+#include <SDL.h>
 
 #include "logger.hh"
+#include "PerlinNoise.hpp"
 
 namespace mccpp::renderer {
-
-struct renderer {
-    SDL_Window   *window = nullptr;
-    SDL_GLContext gl_context = nullptr;
-
-    GLuint shader;
-    GLuint VAO;
-    GLuint VBO;
-    GLuint EBO;
-} g_self = {};
 
 std::string _read_file(const std::string_view &path) {
     constexpr auto read_size = std::size_t(4096);
@@ -105,6 +97,164 @@ struct vertex {
     glm::vec3 color;
 };
 
+struct block {
+    bool is_air = true;
+    glm::vec3 color;
+};
+
+struct chunk {
+    std::array<block, 16 * 16 * 16> blocks;
+
+    bool is_air_at(int x, int y, int z) const;
+    inline bool is_air_at(glm::ivec3 pos) const
+    {
+        return is_air_at(pos.x, pos.y, pos.z);
+    }
+
+    std::tuple<std::vector<vertex>, std::vector<unsigned>> generate_vertices() const;
+};
+
+struct renderer {
+    SDL_Window   *window = nullptr;
+    SDL_GLContext gl_context = nullptr;
+
+    GLuint shader;
+    GLuint VAO;
+    GLuint VBO;
+    GLuint EBO;
+
+    struct {
+        glm::vec3 position;
+        glm::vec3 rotation;
+    } camera;
+} g_self = {};
+
+chunk generate_debug_chunk()
+{
+    chunk c;
+
+    const siv::PerlinNoise::seed_type seed = 123456u;
+    const siv::PerlinNoise perlin { seed };
+    const double scale = 0.01;
+
+    for (int z = 0; z < 16; z++) {
+        for (int x = 0; x < 16; x++) {
+            int h = perlin.octave2D_01(x * scale, z * scale, 4) * 16.0f;
+            for (int y = 0; y < h; y++) {
+                block &b = c.blocks[z * 256 + x * 16 + y];
+                b.is_air = false;
+                b.color = { 1.f, 1.f, 1.f };
+            }
+        }
+    }
+
+    return c;
+}
+
+chunk generate_debug_chunk2()
+{
+    chunk c;
+
+    block &b = c.blocks[0];
+    b.is_air = false;
+    b.color = { 1.f, 1.f, 1.f };
+
+    return c;
+}
+
+bool chunk::is_air_at(int x, int y, int z) const
+{
+    if (x < 0 || y < 0 || z < 0 || x >= 16 || y >= 16 || z >= 16)
+        return true;
+    else
+        return blocks[z * 256 + x * 16 + y].is_air;
+}
+
+// glm::cross has a pointless assert for floating point only
+static glm::ivec3 ivec3_cross(glm::ivec3 x, glm::ivec3 y)
+{
+    return {
+		x.y * y.z - y.y * x.z,
+		x.z * y.x - y.z * x.x,
+		x.x * y.y - y.x * x.y,
+    };
+}
+
+// NOTE: We don't care about winding order or about uv coordinates currently
+void generate_face(std::vector<vertex> &vertices, std::vector<unsigned> &indicies,
+                   block block, glm::vec3 position, glm::ivec3 normal)
+{
+    glm::ivec3 x = ivec3_cross(normal, { 1, 0, 0 });
+    glm::ivec3 y = ivec3_cross(normal, { 0, 1, 0 });
+    glm::ivec3 z = ivec3_cross(normal, { 0, 0, 1 });
+
+    //MCCPP_T("n = ({: d}, {: d}, {: d}) ({: d}, {: d}, {: d}) ({: d}, {: d}, {: d}) ({: d}, {: d}, {: d})",
+    //        normal.x, normal.y, normal.z, x.x, x.y, x.z, y.x, y.y, y.z, z.x, z.y, z.z);
+    glm::ivec3 p0 = x + y + z;
+    glm::ivec3 p1 = ivec3_cross(normal, p0);
+    auto p = std::to_array({
+        p0,
+        p1,
+        -p0,
+        -p1,
+    });
+
+    //MCCPP_T("    ({: d}, {: d}, {: d}) ({: d}, {: d}, {: d}) ({: d}, {: d}, {: d}) ({: d}, {: d}, {: d})",
+    //        p[0].x, p[0].y, p[0].z, p[1].x, p[1].y, p[1].z, p[2].x, p[2].y, p[2].z, p[3].x, p[3].y, p[3].z);
+
+    size_t offset = vertices.size();
+    indicies.emplace_back(offset + 0);
+    indicies.emplace_back(offset + 1);
+    indicies.emplace_back(offset + 3);
+    indicies.emplace_back(offset + 1);
+    indicies.emplace_back(offset + 2);
+    indicies.emplace_back(offset + 3);
+
+    // 03
+    // 12
+
+    (void)block;
+    glm::vec3 fnormal = normal;
+
+    vertices.emplace_back(position + fnormal * 0.5f + static_cast<glm::vec3>(p[0]) * 0.5f, /* block.color */ fnormal * 0.5f + 0.5f);
+    vertices.emplace_back(position + fnormal * 0.5f + static_cast<glm::vec3>(p[1]) * 0.5f, /* block.color */ fnormal * 0.5f + 0.5f);
+    vertices.emplace_back(position + fnormal * 0.5f + static_cast<glm::vec3>(p[2]) * 0.5f, /* block.color */ fnormal * 0.5f + 0.5f);
+    vertices.emplace_back(position + fnormal * 0.5f + static_cast<glm::vec3>(p[3]) * 0.5f, /* block.color */ fnormal * 0.5f + 0.5f);
+}
+
+std::tuple<std::vector<vertex>, std::vector<unsigned>> chunk::generate_vertices() const
+{
+    constexpr std::array<glm::ivec3, 6> faces = {{
+            {  1,  0,  0 },
+            { -1,  0,  0 },
+            {  0,  1,  0 },
+            {  0, -1,  0 },
+            {  0,  0,  1 },
+            {  0,  0, -1 },
+        }};
+    std::vector<vertex> vertices;
+    std::vector<unsigned> indicies;
+
+    for (int z = 0; z < 16; z++) {
+        for (int x = 0; x < 16; x++) {
+            for (int y = 0; y < 16; y++) {
+                glm::ivec3 position = { x, y, z };
+                const block &block = blocks[z * 256 + x * 16 + y];
+                if (block.is_air)
+                    continue;
+
+                for (glm::ivec3 face : faces) {
+                    if (is_air_at(position + face)) {
+                        generate_face(vertices, indicies, block, position, face);
+                    }
+                }
+            }
+        }
+    }
+
+    return { vertices, indicies };
+}
+
 [[nodiscard]]
 static bool _init_or_destroy(bool init)
 {
@@ -118,7 +268,7 @@ static bool _init_or_destroy(bool init)
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK,  SDL_GL_CONTEXT_PROFILE_CORE);
 
     g_self.window = SDL_CreateWindow("mccpp",
-            SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, 640, 480,
+            SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, 1280, 720,
             SDL_WINDOW_OPENGL | SDL_WINDOW_HIDDEN | SDL_WINDOW_ALLOW_HIGHDPI);
     if (!g_self.window) {
         MCCPP_F("SDL_CreateWindow failed: {}", SDL_GetError());
@@ -140,7 +290,20 @@ static bool _init_or_destroy(bool init)
 
     MCCPP_I("Loaded GL {}.{}", GLVersion.major, GLVersion.minor);
 
+    if (!ImGui_ImplSDL2_InitForOpenGL(g_self.window, g_self.gl_context))
+    {
+        MCCPP_F("ImGui_ImplSDL2_InitForOpenGL failed!");
+        goto init_imgui_sdl_failed;
+    }
+
+    if (!ImGui_ImplOpenGL3_Init(nullptr))
+    {
+        MCCPP_F("ImGui_ImplOpenGL3_Init failed!");
+        goto init_imgui_gl_failed;
+    }
+
     // FIXME: Handle errors with gl
+    glEnable(GL_DEPTH_TEST);
 
     {
         unsigned vert = glCreateShader(GL_VERTEX_SHADER);
@@ -177,6 +340,10 @@ static bool _init_or_destroy(bool init)
     return true;
 
 destroy:
+    ImGui_ImplOpenGL3_Shutdown();
+init_imgui_gl_failed:
+    ImGui_ImplSDL2_Shutdown();
+init_imgui_sdl_failed:
 load_glad_failed:
     SDL_GL_DeleteContext(g_self.gl_context);
 create_gl_context_failed:
@@ -196,34 +363,58 @@ void destroy()
     (void)_init_or_destroy(false);
 }
 
-void render()
+void frame_start()
+{
+    SDL_GL_MakeCurrent(g_self.window, g_self.gl_context);
+    ImGui_ImplOpenGL3_NewFrame();
+}
+
+void frame_end()
 {
     int width, height;
     SDL_GL_GetDrawableSize(g_self.window, &width, &height);
 
-    constexpr vertex vertices[] = {
-        { -.5f, -.5f,  .0f,  1.f, 0.f, 0.f },
-        {  .5f, -.5f,  .0f,  0.f, 1.f, 0.f },
-        {  .0f,  .5f,  .0f,  0.f, 0.f, 1.f },
-    };
+    static const chunk chunk = generate_debug_chunk();
+    static auto [vertices, indicies] = chunk.generate_vertices();
 
-    constexpr unsigned indicies[] = {
-        0, 1, 2,
-    };
+    glm::vec3 &camera_position = g_self.camera.position;
+    glm::vec3 &camera_rotation = g_self.camera.rotation;
+
+    glm::mat4 V = glm::mat4(1.0f);
+    V = glm::rotate(V, -camera_rotation.y, glm::vec3(1.0f, 0.0f, 0.0f));
+    V = glm::rotate(V, camera_rotation.x, glm::vec3(0.0f, 1.0f, 0.0f));
+    V = glm::rotate(V, camera_rotation.z, glm::vec3(0.0f, 0.0f, 1.0f));
+    V = glm::translate(V, camera_position * glm::vec3(-1.f, -1.f, -1.f));
+    glm::mat4 P = glm::perspective(glm::radians(90.0f), (float)width / (float)height, 0.1f, 100.0f);
+    glm::mat4 VP = P * V;
 
     glUseProgram(g_self.shader);
+    glUniformMatrix4fv(0, 1, false, glm::value_ptr(VP));
     glBindVertexArray(g_self.VAO);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_DYNAMIC_DRAW);
-    glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indicies), indicies, GL_DYNAMIC_DRAW);
+    glBufferData(GL_ARRAY_BUFFER, vertices.size() * sizeof(vertex), vertices.data(), GL_DYNAMIC_DRAW);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, indicies.size() * sizeof(unsigned), indicies.data(), GL_DYNAMIC_DRAW);
 
     glViewport(0, 0, width, height);
     glClearColor(0.f, 0.f, 0.f, 1.f);
-    glClear(GL_COLOR_BUFFER_BIT);
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-    glDrawElements(GL_TRIANGLES, sizeof(indicies) / sizeof(*indicies), GL_UNSIGNED_INT, nullptr);
+    glDrawElements(GL_TRIANGLES, indicies.size(), GL_UNSIGNED_INT, nullptr);
     glBindVertexArray(0);
 
+    ImGui::Render();
+    ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+
     SDL_GL_SwapWindow(g_self.window);
+}
+
+glm::vec3 &camera::position()
+{
+    return g_self.camera.position;
+}
+
+glm::vec3 &camera::rotation()
+{
+    return g_self.camera.rotation;
 }
 
 }

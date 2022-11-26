@@ -1,5 +1,6 @@
 .vscode/
 build/
+imgui.ini
 
 # cland cache
 .cache/
