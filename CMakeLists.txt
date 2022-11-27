@@ -26,6 +26,7 @@ target_link_libraries(mccpp
         imgui
         imgui::sdl
         imgui::gl
+        spng_static
 )
 
 add_subdirectory(src)

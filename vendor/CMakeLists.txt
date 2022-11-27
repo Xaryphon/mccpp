@@ -64,3 +64,23 @@ if (imgui_ADDED)
     )
     add_library(imgui::gl ALIAS imgui_gl)
 endif()
+
+#:: spng
+
+CPMAddPackage(
+    NAME spng
+    GIT_REPOSITORY https://github.com/randy408/libspng.git
+    GIT_TAG        4baa1b1384da4ae9ddbe42a90e5f6300afb44fe7 # v0.7.2
+    OPTIONS
+        "SPNG_SHARED OFF"
+        "SPNG_STATIC ON"
+        "BUILD_EXAMPLES OFF"
+)
+
+if (spng_ADDED)
+    # spng doesn't add the include directory for some reason
+    target_include_directories(spng_static PUBLIC "${spng_SOURCE_DIR}/spng")
+    # and apparently it doesn't publically link with zlib either
+    find_package(ZLIB REQUIRED)
+    target_link_libraries(spng_static PUBLIC ZLIB::ZLIB)
+endif()

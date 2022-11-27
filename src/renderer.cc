@@ -11,6 +11,7 @@
 #include <imgui_impl_opengl3.h>
 #include <imgui_impl_sdl.h>
 #include <SDL.h>
+#include <spng.h>
 
 #include "logger.hh"
 #include "PerlinNoise.hpp"
@@ -113,6 +114,12 @@ struct renderer {
     GLuint VBO;
     GLuint EBO;
 
+    GLuint tex_uv;
+    std::unique_ptr<char[]> tex_uv_data;
+    size_t tex_uv_length;
+    uint32_t tex_uv_width;
+    uint32_t tex_uv_height;
+
     struct {
         glm::vec3 position;
         glm::vec3 rotation;
@@ -207,10 +214,11 @@ void generate_face(std::vector<vertex> &vertices, std::vector<unsigned> &indicie
     (void)block;
     glm::vec3 fnormal = normal;
 
-    glm::vec2 uv0 = { 0.0f, 0.0f };
-    glm::vec2 uv1 = { 1.0f, 0.0f };
-    glm::vec2 uv2 = { 1.0f, 1.0f };
-    glm::vec2 uv3 = { 0.0f, 1.0f };
+    // NOTE: We swap the UV vertically (because OpenGL texture bottom is 0.f)
+    glm::vec2 uv0 = { 0.0f, 1.0f };
+    glm::vec2 uv1 = { 1.0f, 1.0f };
+    glm::vec2 uv2 = { 1.0f, 0.0f };
+    glm::vec2 uv3 = { 0.0f, 0.0f };
 
     if (normal.x < 0 || normal.y < 0 || normal.z > 0) {
         auto tmp = uv3;
@@ -309,6 +317,38 @@ static bool _init_or_destroy(bool init)
         goto init_imgui_gl_failed;
     }
 
+    {
+        // FIXME: Handle spng errors
+        std::string png = _read_file("assets/dev/textures/misc/uv_16x16.png");
+        spng_ctx *ctx = spng_ctx_new(0);
+        assert(ctx);
+        int error = spng_set_png_buffer(ctx, png.data(), png.size());
+        assert(error == 0);
+        spng_ihdr ihdr;
+        error = spng_get_ihdr(ctx, &ihdr);
+        assert(error == 0);
+        size_t texture_size;
+        error = spng_decoded_image_size(ctx, SPNG_FMT_RGB8, &texture_size);
+        assert(error == 0);
+        auto texture_data = std::make_unique<char[]>(texture_size);
+        error = spng_decode_image(ctx, texture_data.get(), texture_size, SPNG_FMT_RGB8, 0);
+        assert(error == 0);
+        spng_ctx_free(ctx);
+
+        g_self.tex_uv_data = std::move(texture_data);
+        g_self.tex_uv_length = texture_size;
+        g_self.tex_uv_width = ihdr.width;
+        g_self.tex_uv_height = ihdr.height;
+    }
+
+    glGenTextures(1, &g_self.tex_uv);
+    glBindTexture(GL_TEXTURE_2D, g_self.tex_uv);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, g_self.tex_uv_width, g_self.tex_uv_height, 0, GL_RGB, GL_UNSIGNED_BYTE, g_self.tex_uv_data.get());
+
     // FIXME: Handle errors with gl
     glEnable(GL_DEPTH_TEST);
 
@@ -337,8 +377,12 @@ static bool _init_or_destroy(bool init)
 
     glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(vertex), reinterpret_cast<const void*>(offsetof(vertex, position)));
     glEnableVertexAttribArray(0);
-    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, sizeof(vertex), reinterpret_cast<const void*>(offsetof(vertex, color)));
+    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, sizeof(vertex), reinterpret_cast<const void*>(offsetof(vertex, normal)));
     glEnableVertexAttribArray(1);
+    glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, sizeof(vertex), reinterpret_cast<const void*>(offsetof(vertex, color)));
+    glEnableVertexAttribArray(2);
+    glVertexAttribPointer(3, 2, GL_FLOAT, GL_FALSE, sizeof(vertex), reinterpret_cast<const void*>(offsetof(vertex, uv)));
+    glEnableVertexAttribArray(3);
 
     glBindVertexArray(0);
 
@@ -401,6 +445,11 @@ void frame_end()
 
     glUseProgram(g_self.shader);
     glUniformMatrix4fv(0, 1, false, glm::value_ptr(VP));
+
+    glActiveTexture(GL_TEXTURE0);
+    glBindTexture(GL_TEXTURE_2D, g_self.tex_uv);
+    glUniform1i(1, 0);
+
     glBindVertexArray(g_self.VAO);
     glBufferData(GL_ARRAY_BUFFER, vertices.size() * sizeof(vertex), vertices.data(), GL_DYNAMIC_DRAW);
     glBufferData(GL_ELEMENT_ARRAY_BUFFER, indicies.size() * sizeof(unsigned), indicies.data(), GL_DYNAMIC_DRAW);
