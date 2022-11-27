@@ -1,3 +1,3 @@
 #!/bin/sh
 
-rm -r build
+rm -rf build
