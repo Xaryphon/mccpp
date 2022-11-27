@@ -77,24 +77,14 @@ static bool _link_program(GLuint program)
 }
 
 struct vertex {
-    constexpr vertex(glm::vec3 position, glm::vec3 color)
-    : position(position), color(color)
-    {}
-
-    constexpr vertex(float x, float y, float z, float r, float g, float b)
-    : position(x, y, z), color(r, g, b)
-    {}
-
-    constexpr vertex(glm::vec3 position, float r, float g, float b)
-    : position(position), color(r, g, b)
-    {}
-
-    constexpr vertex(float x, float y, float z, glm::vec3 color)
-    : position(x, y, z), color(color)
+    constexpr vertex(glm::vec3 position, glm::vec3 normal, glm::vec3 color, glm::vec2 uv)
+    : position(position), normal(normal), color(color), uv(uv)
     {}
 
     glm::vec3 position;
+    glm::vec3 normal;
     glm::vec3 color;
+    glm::vec2 uv;
 };
 
 struct block {
@@ -180,10 +170,11 @@ static glm::ivec3 ivec3_cross(glm::ivec3 x, glm::ivec3 y)
     };
 }
 
-// NOTE: We don't care about winding order or about uv coordinates currently
 void generate_face(std::vector<vertex> &vertices, std::vector<unsigned> &indicies,
                    block block, glm::vec3 position, glm::ivec3 normal)
 {
+    assert((normal.x == 0) + (normal.y == 0) + (normal.z == 0) == 2);
+
     glm::ivec3 x = ivec3_cross(normal, { 1, 0, 0 });
     glm::ivec3 y = ivec3_cross(normal, { 0, 1, 0 });
     glm::ivec3 z = ivec3_cross(normal, { 0, 0, 1 });
@@ -216,10 +207,26 @@ void generate_face(std::vector<vertex> &vertices, std::vector<unsigned> &indicie
     (void)block;
     glm::vec3 fnormal = normal;
 
-    vertices.emplace_back(position + fnormal * 0.5f + static_cast<glm::vec3>(p[0]) * 0.5f, /* block.color */ fnormal * 0.5f + 0.5f);
-    vertices.emplace_back(position + fnormal * 0.5f + static_cast<glm::vec3>(p[1]) * 0.5f, /* block.color */ fnormal * 0.5f + 0.5f);
-    vertices.emplace_back(position + fnormal * 0.5f + static_cast<glm::vec3>(p[2]) * 0.5f, /* block.color */ fnormal * 0.5f + 0.5f);
-    vertices.emplace_back(position + fnormal * 0.5f + static_cast<glm::vec3>(p[3]) * 0.5f, /* block.color */ fnormal * 0.5f + 0.5f);
+    glm::vec2 uv0 = { 0.0f, 0.0f };
+    glm::vec2 uv1 = { 1.0f, 0.0f };
+    glm::vec2 uv2 = { 1.0f, 1.0f };
+    glm::vec2 uv3 = { 0.0f, 1.0f };
+
+    if (normal.x < 0 || normal.y < 0 || normal.z > 0) {
+        auto tmp = uv3;
+        uv3 = uv2;
+        uv2 = uv1;
+        uv1 = uv0;
+        uv0 = tmp;
+    } else if (normal.y > 0) {
+        std::swap(uv3, uv1);
+        std::swap(uv2, uv0);
+    }
+
+    vertices.emplace_back(position + fnormal * 0.5f + static_cast<glm::vec3>(p[0]) * 0.5f, fnormal, /* block.color */ fnormal * 0.5f + 0.5f, uv0);
+    vertices.emplace_back(position + fnormal * 0.5f + static_cast<glm::vec3>(p[1]) * 0.5f, fnormal, /* block.color */ fnormal * 0.5f + 0.5f, uv1);
+    vertices.emplace_back(position + fnormal * 0.5f + static_cast<glm::vec3>(p[2]) * 0.5f, fnormal, /* block.color */ fnormal * 0.5f + 0.5f, uv2);
+    vertices.emplace_back(position + fnormal * 0.5f + static_cast<glm::vec3>(p[3]) * 0.5f, fnormal, /* block.color */ fnormal * 0.5f + 0.5f, uv3);
 }
 
 std::tuple<std::vector<vertex>, std::vector<unsigned>> chunk::generate_vertices() const
@@ -334,6 +341,10 @@ static bool _init_or_destroy(bool init)
     glEnableVertexAttribArray(1);
 
     glBindVertexArray(0);
+
+    glEnable(GL_CULL_FACE);
+    glCullFace(GL_BACK);
+    glFrontFace(GL_CCW);
 
     SDL_ShowWindow(g_self.window);
 
