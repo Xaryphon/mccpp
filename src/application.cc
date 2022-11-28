@@ -186,6 +186,13 @@ int main(int argc, char **argv)
         if (ImGui::DragFloat3("Camera Rotation", glm::value_ptr(look_degrees), 0.1f))
             look = look_degrees / 180.0f * glm::pi<float>();
 
+        static glm::vec3 last_camera_position = {};
+        glm::vec3 move_speed = (camera_position - last_camera_position) / frame_time;
+        last_camera_position = camera_position;
+        ImGui::DragFloat3("Velocity", glm::value_ptr(move_speed));
+        float velocity = glm::length(move_speed);
+        ImGui::DragFloat("|Velocity|", &velocity);
+
         renderer::frame_end();
 
         frame_count++;
