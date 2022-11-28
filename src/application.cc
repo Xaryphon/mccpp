@@ -161,6 +161,10 @@ int main(int argc, char **argv)
             g_app.input.move.y * sin(-look.x) + g_app.input.move.x * cos(look.x),
         };
 
+        if (glm::dot(move, move) > 1) {
+            move = glm::normalize(move);
+        }
+
         camera_position.x += MOVE_SPEED * move.y * frame_time;
         camera_position.z += MOVE_SPEED * move.x * frame_time;
         camera_position.y += MOVE_SPEED * g_app.input.fly * frame_time;
