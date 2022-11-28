@@ -65,6 +65,7 @@ if (imgui_ADDED)
     add_library(imgui::gl ALIAS imgui_gl)
 endif()
 
+
 #:: spng
 
 CPMAddPackage(
@@ -84,3 +85,28 @@ if (spng_ADDED)
     find_package(ZLIB REQUIRED)
     target_link_libraries(spng_static PUBLIC ZLIB::ZLIB)
 endif()
+
+
+#:: glm
+
+CPMAddPackage(
+    NAME glm
+    GIT_REPOSITORY https://github.com/g-truc/glm.git
+    GIT_TAG        bf71a834948186f4097caa076cd2663c69a10e1e # 0.9.9.8
+    OPTIONS
+        "BUILD_STATIC_LIBS OFF"
+        "BUILD_SHARED_LIBS OFF"
+        "BUILD_TESTING OFF"
+)
+
+
+#:: fmt
+
+CPMAddPackage(
+    NAME fmt
+    GIT_REPOSITORY https://github.com/fmtlib/fmt.git
+    GIT_TAG        a33701196adfad74917046096bf5a2aa0ab0bb50 # 9.1.0
+    OPTIONS
+        "FMT_DOC OFF"
+        "FMT_TEST OFF"
+)

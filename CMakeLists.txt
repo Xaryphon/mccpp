@@ -7,8 +7,6 @@ project(
 )
 
 find_package(SDL2 REQUIRED)
-find_package(fmt REQUIRED)
-find_package(glm REQUIRED)
 add_subdirectory(vendor)
 
 add_executable(mccpp)
