@@ -20,7 +20,7 @@ target_link_libraries(mccpp
     PUBLIC
         SDL2::SDL2
         fmt::fmt
-        glm
+        glm::glm
     PRIVATE
         glad
         imgui
