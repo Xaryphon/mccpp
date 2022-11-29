@@ -177,6 +177,9 @@ int main(int argc, char **argv)
         }
         ImGui::NewFrame();
 
+        float fps_time[2] = { 1 / frame_time, frame_time * 1000.f };
+        ImGui::InputFloat2("FPS / ms", fps_time, "%.3f", ImGuiInputTextFlags_ReadOnly);
+
         ImGui::DragFloat2("input.move", glm::value_ptr(g_app.input.move));
         ImGui::DragFloat2("input.look", glm::value_ptr(g_app.input.look));
         ImGui::DragFloat("input.fly", &g_app.input.fly);
@@ -195,10 +198,10 @@ int main(int argc, char **argv)
 
         renderer::frame_end();
 
-        frame_count++;
         auto now = std::chrono::steady_clock::now();
         frame_time = std::chrono::duration_cast<std::chrono::duration<float>>(now - frame_last).count();
         frame_last = now;
+        frame_count++;
     }
 
     quit();

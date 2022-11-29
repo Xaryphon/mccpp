@@ -15,29 +15,16 @@
 
 #include "../logger.hh"
 #include "../PerlinNoise.hpp"
+#include "../resource/shader.hh"
 #include "../resource/texture.hh"
 #include "../world/chunk.hh"
 #include "vertex.hh"
 
 namespace mccpp::renderer {
 
-std::string _read_file(const std::string_view &path) {
-    constexpr auto read_size = std::size_t(4096);
-    auto stream = std::ifstream(path.data());
-    stream.exceptions(std::ios_base::badbit);
-
-    auto out = std::string();
-    auto buf = std::string(read_size, '\0');
-    while (stream.read(& buf[0], read_size)) {
-        out.append(buf, 0, stream.gcount());
-    }
-    out.append(buf, 0, stream.gcount());
-    return out;
-}
-
-static bool _compile_shader(GLuint shader, const std::string_view &path)
+static bool _compile_shader(GLuint shader, const char *path)
 {
-    std::string source = _read_file(path);
+    resource::shader source { path };
     const char *source_pointer = source.data();
     const int source_length = source.length();
 

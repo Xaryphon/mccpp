@@ -11,5 +11,5 @@ CXXFLAGS="$CXXFLAGS -Wno-volatile"
 cmake -S . -B build -GNinja -Werror=dev \
     -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
     -DCMAKE_CXX_FLAGS="$CXXFLAGS" \
-    -DCMAKE_CXX_FLAGS_DEBUG="-fsanitize=address,undefined" \
+    -DCMAKE_CXX_FLAGS_DEBUG="-g -fsanitize=address,undefined" \
     "$@"
