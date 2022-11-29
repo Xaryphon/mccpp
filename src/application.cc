@@ -8,7 +8,7 @@
 #include <SDL.h>
 
 #include "logger.hh"
-#include "renderer.hh"
+#include "renderer/renderer.hh"
 
 namespace mccpp::application {
 

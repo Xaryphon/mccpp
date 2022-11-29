@@ -15,6 +15,7 @@
 
 #include "../logger.hh"
 #include "../PerlinNoise.hpp"
+#include "../resource/texture.hh"
 #include "../world/chunk.hh"
 #include "vertex.hh"
 
@@ -89,10 +90,7 @@ struct renderer {
     GLuint EBO;
 
     GLuint tex_uv;
-    std::unique_ptr<char[]> tex_uv_data;
-    size_t tex_uv_length;
-    uint32_t tex_uv_width;
-    uint32_t tex_uv_height;
+    resource::texture res_uv;
 
     struct {
         glm::vec3 position;
@@ -180,29 +178,7 @@ static bool _init_or_destroy(bool init)
         goto init_imgui_gl_failed;
     }
 
-    {
-        // FIXME: Handle spng errors
-        std::string png = _read_file("assets/dev/textures/misc/uv_16x16.png");
-        spng_ctx *ctx = spng_ctx_new(0);
-        assert(ctx);
-        int error = spng_set_png_buffer(ctx, png.data(), png.size());
-        assert(error == 0);
-        spng_ihdr ihdr;
-        error = spng_get_ihdr(ctx, &ihdr);
-        assert(error == 0);
-        size_t texture_size;
-        error = spng_decoded_image_size(ctx, SPNG_FMT_RGB8, &texture_size);
-        assert(error == 0);
-        auto texture_data = std::make_unique<char[]>(texture_size);
-        error = spng_decode_image(ctx, texture_data.get(), texture_size, SPNG_FMT_RGB8, 0);
-        assert(error == 0);
-        spng_ctx_free(ctx);
-
-        g_self.tex_uv_data = std::move(texture_data);
-        g_self.tex_uv_length = texture_size;
-        g_self.tex_uv_width = ihdr.width;
-        g_self.tex_uv_height = ihdr.height;
-    }
+    g_self.res_uv.load("assets/dev/textures/misc/uv_16x16.png");
 
     glGenTextures(1, &g_self.tex_uv);
     glBindTexture(GL_TEXTURE_2D, g_self.tex_uv);
@@ -210,7 +186,7 @@ static bool _init_or_destroy(bool init)
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, g_self.tex_uv_width, g_self.tex_uv_height, 0, GL_RGB, GL_UNSIGNED_BYTE, g_self.tex_uv_data.get());
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, g_self.res_uv.width(), g_self.res_uv.height(), 0, GL_RGB, GL_UNSIGNED_BYTE, g_self.res_uv.data());
 
     // FIXME: Handle errors with gl
     glEnable(GL_DEPTH_TEST);
