@@ -177,8 +177,15 @@ int main(int argc, char **argv)
         }
         ImGui::NewFrame();
 
-        float fps_time[2] = { 1 / frame_time, frame_time * 1000.f };
-        ImGui::InputFloat2("FPS / ms", fps_time, "%.3f", ImGuiInputTextFlags_ReadOnly);
+        ImGui::SetNextWindowPos(ImVec2{0, 0}, ImGuiCond_Always, {0, 0});
+        if (ImGui::Begin("##DebugTopLeft", nullptr,
+                ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoSavedSettings |
+                ImGuiWindowFlags_NoNav | ImGuiWindowFlags_NoDecoration |
+                ImGuiWindowFlags_NoInputs | ImGuiWindowFlags_NoBackground))
+        {
+            ImGui::Text("%.0f fps %.3f ms", 1 / frame_time, frame_time * 1000.f);
+        }
+        ImGui::End();
 
         ImGui::DragFloat2("input.move", glm::value_ptr(g_app.input.move));
         ImGui::DragFloat2("input.look", glm::value_ptr(g_app.input.look));
