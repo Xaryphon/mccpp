@@ -16,6 +16,8 @@ namespace mccpp::application {
 struct {
     bool should_quit = false;
     bool capture_mouse;
+    unsigned frame_count = 0;
+
     struct {
         struct {
             input::axis x { "look.x" };
@@ -27,6 +29,7 @@ struct {
         } move;
         input::button jump  { "jump" };
         input::button sneak { "sneak" };
+        input::button unlock_cursor { "unlock_cursor" };
     } input;
 } g_app = {};
 
@@ -55,6 +58,7 @@ static bool _init_or_quit(bool init)
     input::keyboard::assign(I.move.y, SDL_SCANCODE_S, SDL_SCANCODE_W);
     input::keyboard::assign(I.jump, SDL_SCANCODE_SPACE);
     input::keyboard::assign(I.sneak, SDL_SCANCODE_LSHIFT);
+    input::keyboard::assign(I.unlock_cursor, SDL_SCANCODE_LALT);
 
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
@@ -112,29 +116,11 @@ static void poll_events()
             if (io.WantCaptureKeyboard)
                 break;
             input::manager::handle_event(event);
-            //if (!event.key.repeat) {
-                //bool down = event.type == SDL_KEYDOWN;
-                //switch (event.key.keysym.scancode) {
-                //case SDL_SCANCODE_W:      g_app.input.move.y -= down * 2.0f - 1.0f; break;
-                //case SDL_SCANCODE_S:      g_app.input.move.y += down * 2.0f - 1.0f; break;
-                //case SDL_SCANCODE_A:      g_app.input.move.x -= down * 2.0f - 1.0f; break;
-                //case SDL_SCANCODE_D:      g_app.input.move.x += down * 2.0f - 1.0f; break;
-                //case SDL_SCANCODE_SPACE:  g_app.input.fly    += down * 2.0f - 1.0f; break;
-                //case SDL_SCANCODE_LSHIFT: g_app.input.fly    -= down * 2.0f - 1.0f; break;
-                //case SDL_SCANCODE_LALT:
-                //    if (down) {
-                //        set_capture_mouse(!g_app.capture_mouse);
-                //    }
-                //    break;
-                //default: break;
-                //}
-            //}
             break;
         case SDL_MOUSEMOTION:
-            input::manager::handle_event(event);
-            //if (g_app.capture_mouse) {
-            //    g_app.input.look = { event.motion.xrel, -event.motion.yrel };
-            //}
+            if (g_app.capture_mouse) {
+                input::manager::handle_event(event);
+            }
             break;
         default:
             break;
@@ -157,6 +143,9 @@ int main(int argc, char **argv)
     while (!g_app.should_quit) {
         input::manager::reset_deltas();
         poll_events();
+
+        if (g_app.input.unlock_cursor.down())
+            set_capture_mouse(!g_app.capture_mouse);
 
         const float MOUSE_SENSITIVITY = 2.0f;
         const float MOVE_SPEED = 20.0f;
@@ -231,10 +220,16 @@ int main(int argc, char **argv)
         frame_time = std::chrono::duration_cast<std::chrono::duration<float>>(now - frame_last).count();
         frame_last = now;
         frame_count++;
+        g_app.frame_count = frame_count;
     }
 
     quit();
     return 0;
+}
+
+unsigned frame_count()
+{
+    return g_app.frame_count;
 }
 
 }

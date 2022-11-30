@@ -16,6 +16,8 @@ struct axis {
 struct button {
     button(std::string_view name);
     bool pressed() const;
+    bool down() const;
+    bool up() const;
 
     const uint16_t idx;
 };

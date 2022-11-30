@@ -4,6 +4,7 @@
 #include <cassert>
 #include <vector>
 
+#include "../application.hh"
 #include "../logger.hh"
 
 namespace mccpp::input {
@@ -12,11 +13,18 @@ const uint16_t IDX_INVALID = -1;
 
 struct input_data {
     explicit input_data(std::string_view name)
-    : name(name), value(0)
+    : name(name), value(0), last_update(0)
     {}
+
+    float update(float new_value)
+    {
+        last_update = application::frame_count();
+        return value = new_value;
+    }
 
     const std::string name;
     float value;
+    unsigned last_update;
 };
 
 struct input_reference {
@@ -77,6 +85,18 @@ bool button::pressed() const
     return g_self.inputs[idx].value > 0.5f;
 }
 
+bool button::down() const
+{
+    input_data &input = g_self.inputs[idx];
+    return input.value > 0.5f && input.last_update == application::frame_count();
+}
+
+bool button::up() const
+{
+    input_data &input = g_self.inputs[idx];
+    return input.value < 0.5f && input.last_update == application::frame_count();
+}
+
 void mouse::assign(axis x, axis y)
 {
     g_self.mouse.x = x.idx;
@@ -117,10 +137,10 @@ void manager::handle_event(SDL_Event &event)
     switch (event.type) {
     case SDL_MOUSEMOTION:
         if (uint16_t x = g_self.mouse.x; x != IDX_INVALID) {
-            g_self.inputs[x].value = g_self.mouse.sensitivity * event.motion.xrel;
+            g_self.inputs[x].update(g_self.mouse.sensitivity * event.motion.xrel);
         }
         if (uint16_t y = g_self.mouse.y; y != IDX_INVALID) {
-            g_self.inputs[y].value = g_self.mouse.sensitivity * -event.motion.yrel;
+            g_self.inputs[y].update(g_self.mouse.sensitivity * -event.motion.yrel);
         }
         break;
     case SDL_KEYDOWN:
@@ -129,7 +149,7 @@ void manager::handle_event(SDL_Event &event)
         if (!event.key.repeat) {
             bool down = event.type == SDL_KEYDOWN;
             if (input_reference &ref = g_self.keyboard[event.key.keysym.scancode]; ref.idx != IDX_INVALID) {
-                g_self.inputs[ref.idx].value = down ? ref.amplitude : 0.f;
+                g_self.inputs[ref.idx].update(down ? ref.amplitude : 0.f);
             }
         }
         break;
