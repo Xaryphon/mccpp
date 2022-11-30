@@ -153,8 +153,8 @@ int main(int argc, char **argv)
         glm::vec3 &camera_position = renderer::camera::position();
         glm::vec3 &look = renderer::camera::rotation();
 
-        look.x += MOUSE_SENSITIVITY * g_app.input.look.x.value() * frame_time;
-        look.y += MOUSE_SENSITIVITY * g_app.input.look.y.value() * frame_time;
+        look.x += MOUSE_SENSITIVITY * g_app.input.look.x * frame_time;
+        look.y += MOUSE_SENSITIVITY * g_app.input.look.y * frame_time;
 
         look.x = glm::mod(look.x, 2.0f * glm::pi<float>());
         if (look.y >  0.5f * glm::pi<float>())
@@ -163,8 +163,8 @@ int main(int argc, char **argv)
             look.y = -0.5f * glm::pi<float>();
 
         glm::vec2 move {
-            g_app.input.move.y.value() * cos(-look.x) + g_app.input.move.x.value() * sin(look.x),
-            g_app.input.move.y.value() * sin(-look.x) + g_app.input.move.x.value() * cos(look.x),
+            g_app.input.move.y * cos(-look.x) + g_app.input.move.x * sin(look.x),
+            g_app.input.move.y * sin(-look.x) + g_app.input.move.x * cos(look.x),
         };
 
         if (glm::dot(move, move) > 1) {
@@ -174,9 +174,9 @@ int main(int argc, char **argv)
         camera_position.x += MOVE_SPEED * move.y * frame_time;
         camera_position.z += MOVE_SPEED * move.x * frame_time;
         float fly = 0.f;
-        if (g_app.input.jump.pressed())
+        if (g_app.input.jump)
             fly += 1.f;
-        if (g_app.input.sneak.pressed())
+        if (g_app.input.sneak)
             fly -= 1.f;
         camera_position.y += MOVE_SPEED * fly * frame_time;
 
@@ -192,9 +192,15 @@ int main(int argc, char **argv)
         if (ImGui::Begin("##DebugTopLeft", nullptr,
                 ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoSavedSettings |
                 ImGuiWindowFlags_NoNav | ImGuiWindowFlags_NoDecoration |
-                ImGuiWindowFlags_NoInputs | ImGuiWindowFlags_NoBackground))
+                ImGuiWindowFlags_NoInputs | ImGuiWindowFlags_NoBackground |
+                ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoBringToFrontOnFocus))
         {
             ImGui::Text("%.0f fps %.3f ms", 1 / frame_time, frame_time * 1000.f);
+            for (uint16_t i = 0, c = input::manager::get_input_count(); i < c; i++) {
+                std::string_view n = input::manager::get_input_name(i);
+                float v = input::manager::get_input_value(i);
+                ImGui::Text("%.*s = %.03f", (int)n.length(), n.data(), v);
+            }
         }
         ImGui::End();
 

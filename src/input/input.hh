@@ -7,17 +7,21 @@
 namespace mccpp::input {
 
 struct axis {
-    axis(std::string_view name);
+    explicit axis(std::string_view name);
     float value() const;
+
+    operator float() const { return value(); }
 
     const uint16_t idx;
 };
 
 struct button {
-    button(std::string_view name);
+    explicit button(std::string_view name);
     bool pressed() const;
     bool down() const;
     bool up() const;
+
+    operator bool() const { return pressed(); }
 
     const uint16_t idx;
 };
@@ -36,6 +40,10 @@ namespace keyboard {
 namespace manager {
     void reset_deltas();
     void handle_event(SDL_Event &event);
+
+    uint16_t get_input_count();
+    std::string_view get_input_name(uint16_t idx);
+    float get_input_value(uint16_t idx);
 }
 
 }

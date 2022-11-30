@@ -157,4 +157,19 @@ void manager::handle_event(SDL_Event &event)
     }
 }
 
+uint16_t manager::get_input_count()
+{
+    return g_self.inputs.size();
+}
+
+std::string_view manager::get_input_name(uint16_t idx)
+{
+    return g_self.inputs[idx].name;
+}
+
+float manager::get_input_value(uint16_t idx)
+{
+    return g_self.inputs[idx].value;
+}
+
 }
