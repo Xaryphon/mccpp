@@ -8,6 +8,7 @@
 #include <SDL.h>
 
 #include "logger.hh"
+#include "input/input.hh"
 #include "renderer/renderer.hh"
 
 namespace mccpp::application {
@@ -16,9 +17,16 @@ struct {
     bool should_quit = false;
     bool capture_mouse;
     struct {
-        glm::vec2 move;
-        glm::vec2 look;
-        float fly;
+        struct {
+            input::axis x { "look.x" };
+            input::axis y { "look.y" };
+        } look;
+        struct {
+            input::axis x { "move.x" };
+            input::axis y { "move.y" };
+        } move;
+        input::button jump  { "jump" };
+        input::button sneak { "sneak" };
     } input;
 } g_app = {};
 
@@ -32,6 +40,8 @@ static void set_capture_mouse(bool state)
 [[nodiscard]]
 static bool _init_or_quit(bool init)
 {
+    auto &I = g_app.input;
+
     if (!init)
         goto quit;
 
@@ -39,6 +49,12 @@ static bool _init_or_quit(bool init)
         MCCPP_F("SDL_Init failed: {}", SDL_GetError());
         goto sdl_init_failed;
     }
+
+    input::mouse::assign(I.look.x, I.look.y);
+    input::keyboard::assign(I.move.x, SDL_SCANCODE_D, SDL_SCANCODE_A);
+    input::keyboard::assign(I.move.y, SDL_SCANCODE_S, SDL_SCANCODE_W);
+    input::keyboard::assign(I.jump, SDL_SCANCODE_SPACE);
+    input::keyboard::assign(I.sneak, SDL_SCANCODE_LSHIFT);
 
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
@@ -95,28 +111,30 @@ static void poll_events()
         case SDL_KEYUP:
             if (io.WantCaptureKeyboard)
                 break;
-            if (!event.key.repeat) {
-                bool down = event.type == SDL_KEYDOWN;
-                switch (event.key.keysym.scancode) {
-                case SDL_SCANCODE_W:      g_app.input.move.y -= down * 2.0f - 1.0f; break;
-                case SDL_SCANCODE_S:      g_app.input.move.y += down * 2.0f - 1.0f; break;
-                case SDL_SCANCODE_A:      g_app.input.move.x -= down * 2.0f - 1.0f; break;
-                case SDL_SCANCODE_D:      g_app.input.move.x += down * 2.0f - 1.0f; break;
-                case SDL_SCANCODE_SPACE:  g_app.input.fly    += down * 2.0f - 1.0f; break;
-                case SDL_SCANCODE_LSHIFT: g_app.input.fly    -= down * 2.0f - 1.0f; break;
-                case SDL_SCANCODE_LALT:
-                    if (down) {
-                        set_capture_mouse(!g_app.capture_mouse);
-                    }
-                    break;
-                default: break;
-                }
-            }
+            input::manager::handle_event(event);
+            //if (!event.key.repeat) {
+                //bool down = event.type == SDL_KEYDOWN;
+                //switch (event.key.keysym.scancode) {
+                //case SDL_SCANCODE_W:      g_app.input.move.y -= down * 2.0f - 1.0f; break;
+                //case SDL_SCANCODE_S:      g_app.input.move.y += down * 2.0f - 1.0f; break;
+                //case SDL_SCANCODE_A:      g_app.input.move.x -= down * 2.0f - 1.0f; break;
+                //case SDL_SCANCODE_D:      g_app.input.move.x += down * 2.0f - 1.0f; break;
+                //case SDL_SCANCODE_SPACE:  g_app.input.fly    += down * 2.0f - 1.0f; break;
+                //case SDL_SCANCODE_LSHIFT: g_app.input.fly    -= down * 2.0f - 1.0f; break;
+                //case SDL_SCANCODE_LALT:
+                //    if (down) {
+                //        set_capture_mouse(!g_app.capture_mouse);
+                //    }
+                //    break;
+                //default: break;
+                //}
+            //}
             break;
         case SDL_MOUSEMOTION:
-            if (g_app.capture_mouse) {
-                g_app.input.look = { event.motion.xrel, -event.motion.yrel };
-            }
+            input::manager::handle_event(event);
+            //if (g_app.capture_mouse) {
+            //    g_app.input.look = { event.motion.xrel, -event.motion.yrel };
+            //}
             break;
         default:
             break;
@@ -137,6 +155,7 @@ int main(int argc, char **argv)
     float frame_time = 0.f;
 
     while (!g_app.should_quit) {
+        input::manager::reset_deltas();
         poll_events();
 
         const float MOUSE_SENSITIVITY = 2.0f;
@@ -145,8 +164,8 @@ int main(int argc, char **argv)
         glm::vec3 &camera_position = renderer::camera::position();
         glm::vec3 &look = renderer::camera::rotation();
 
-        look.x += MOUSE_SENSITIVITY * g_app.input.look.x * frame_time;
-        look.y += MOUSE_SENSITIVITY * g_app.input.look.y * frame_time;
+        look.x += MOUSE_SENSITIVITY * g_app.input.look.x.value() * frame_time;
+        look.y += MOUSE_SENSITIVITY * g_app.input.look.y.value() * frame_time;
 
         look.x = glm::mod(look.x, 2.0f * glm::pi<float>());
         if (look.y >  0.5f * glm::pi<float>())
@@ -154,11 +173,9 @@ int main(int argc, char **argv)
         if (look.y < -0.5f * glm::pi<float>())
             look.y = -0.5f * glm::pi<float>();
 
-        g_app.input.look = {};
-
         glm::vec2 move {
-            g_app.input.move.y * cos(-look.x) + g_app.input.move.x * sin(look.x),
-            g_app.input.move.y * sin(-look.x) + g_app.input.move.x * cos(look.x),
+            g_app.input.move.y.value() * cos(-look.x) + g_app.input.move.x.value() * sin(look.x),
+            g_app.input.move.y.value() * sin(-look.x) + g_app.input.move.x.value() * cos(look.x),
         };
 
         if (glm::dot(move, move) > 1) {
@@ -167,7 +184,12 @@ int main(int argc, char **argv)
 
         camera_position.x += MOVE_SPEED * move.y * frame_time;
         camera_position.z += MOVE_SPEED * move.x * frame_time;
-        camera_position.y += MOVE_SPEED * g_app.input.fly * frame_time;
+        float fly = 0.f;
+        if (g_app.input.jump.pressed())
+            fly += 1.f;
+        if (g_app.input.sneak.pressed())
+            fly -= 1.f;
+        camera_position.y += MOVE_SPEED * fly * frame_time;
 
         renderer::frame_start();
         ImGui_ImplSDL2_NewFrame();
@@ -187,9 +209,9 @@ int main(int argc, char **argv)
         }
         ImGui::End();
 
-        ImGui::DragFloat2("input.move", glm::value_ptr(g_app.input.move));
-        ImGui::DragFloat2("input.look", glm::value_ptr(g_app.input.look));
-        ImGui::DragFloat("input.fly", &g_app.input.fly);
+        //ImGui::DragFloat2("input.move", glm::value_ptr(g_app.input.move));
+        //ImGui::DragFloat2("input.look", glm::value_ptr(g_app.input.look));
+        //ImGui::DragFloat("input.fly", &g_app.input.fly);
 
         ImGui::DragFloat3("Camera Position", glm::value_ptr(camera_position), 0.1f);
         glm::vec3 look_degrees = look / glm::pi<float>() * 180.0f;

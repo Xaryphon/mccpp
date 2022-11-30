@@ -1,33 +1,39 @@
 #pragma once
 
-#include <SDL_events.h>
+#include <SDL.h>
 #include <cstdint>
 #include <string_view>
 
 namespace mccpp::input {
 
-class axis {
-public:
+struct axis {
     axis(std::string_view name);
     float value() const;
 
-private:
-    uint8_t m_idx;
+    const uint16_t idx;
 };
 
-class button {
-public:
+struct button {
     button(std::string_view name);
     bool pressed() const;
 
-private:
-    uint8_t m_idx;
+    const uint16_t idx;
 };
 
+namespace mouse {
+    void assign(axis x, axis y);
+
+    float &sensitivity();
+}
+
+namespace keyboard {
+    void assign(button, SDL_Scancode);
+    void assign(axis, SDL_Scancode, SDL_Scancode);
+}
+
 namespace manager {
-
-void handle_event(SDL_Event &e);
-
+    void reset_deltas();
+    void handle_event(SDL_Event &event);
 }
 
 }
