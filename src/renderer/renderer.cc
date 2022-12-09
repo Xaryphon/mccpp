@@ -3,6 +3,7 @@
 #include <array>
 #include <fstream>
 #include <memory>
+#include <optional>
 #include <vector>
 
 #include <glad/glad.h>
@@ -67,11 +68,33 @@ static bool _link_program(GLuint program)
     return true;
 }
 
+class shader {
+public:
+    shader();
+    shader(const char *vert, const char *frag)
+    : shader()
+    {
+        load(vert, frag);
+    }
+    ~shader();
+    void load(const char *vert, const char *frag);
+
+    void use()
+    {
+        glUseProgram(m_program);
+    }
+
+private:
+    GLuint m_vert;
+    GLuint m_frag;
+    GLuint m_program;
+};
+
 struct renderer {
     SDL_Window   *window = nullptr;
     SDL_GLContext gl_context = nullptr;
 
-    GLuint shader;
+    std::optional<class shader> shader;
     GLuint VAO;
     GLuint VBO;
     GLuint EBO;
@@ -84,6 +107,29 @@ struct renderer {
         glm::vec3 rotation;
     } camera;
 } g_self = {};
+
+shader::shader()
+: m_vert(glCreateShader(GL_VERTEX_SHADER))
+, m_frag(glCreateShader(GL_FRAGMENT_SHADER))
+, m_program(glCreateProgram())
+{
+    glAttachShader(m_program, m_vert);
+    glAttachShader(m_program, m_frag);
+}
+
+shader::~shader()
+{
+    glDeleteShader(m_vert);
+    glDeleteShader(m_frag);
+    glDeleteProgram(m_program);
+}
+
+void shader::load(const char *vert, const char *frag)
+{
+    _compile_shader(m_vert, vert);
+    _compile_shader(m_frag, frag);
+    _link_program(m_program);
+}
 
 world::chunk generate_debug_chunk()
 {
@@ -178,20 +224,7 @@ static bool _init_or_destroy(bool init)
     // FIXME: Handle errors with gl
     glEnable(GL_DEPTH_TEST);
 
-    {
-        unsigned vert = glCreateShader(GL_VERTEX_SHADER);
-        _compile_shader(vert, "shaders/basic.vert");
-        unsigned frag = glCreateShader(GL_FRAGMENT_SHADER);
-        _compile_shader(frag, "shaders/basic.frag");
-
-        g_self.shader = glCreateProgram();
-        glAttachShader(g_self.shader, vert);
-        glAttachShader(g_self.shader, frag);
-        _link_program(g_self.shader);
-
-        glDeleteShader(vert);
-        glDeleteShader(frag);
-    }
+    g_self.shader.emplace("shaders/basic.vert", "shaders/basic.frag");
 
     glGenVertexArrays(1, &g_self.VAO);
     glGenBuffers(1, &g_self.VBO);
@@ -221,6 +254,7 @@ static bool _init_or_destroy(bool init)
     return true;
 
 destroy:
+    g_self.shader.reset();
     ImGui_ImplOpenGL3_Shutdown();
 init_imgui_gl_failed:
     ImGui_ImplSDL2_Shutdown();
@@ -269,7 +303,7 @@ void frame_end()
     glm::mat4 P = glm::perspective(glm::radians(90.0f), (float)width / (float)height, 0.1f, 100.0f);
     glm::mat4 VP = P * V;
 
-    glUseProgram(g_self.shader);
+    g_self.shader->use();
     glUniformMatrix4fv(0, 1, false, glm::value_ptr(VP));
 
     glActiveTexture(GL_TEXTURE0);
