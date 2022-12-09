@@ -1,6 +1,5 @@
 .vscode/
 build/
 imgui.ini
-
-# cland cache
+assets/minecraft/
 .cache/
