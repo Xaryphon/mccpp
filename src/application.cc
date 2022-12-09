@@ -147,7 +147,7 @@ int main(int argc, char **argv)
         if (g_app.input.unlock_cursor.down())
             set_capture_mouse(!g_app.capture_mouse);
 
-        const float MOUSE_SENSITIVITY = 2.0f;
+        const float MOUSE_SENSITIVITY = 0.36f;
         const float MOVE_SPEED = 20.0f;
 
         glm::vec3 &camera_position = renderer::camera::position();
@@ -196,10 +196,8 @@ int main(int argc, char **argv)
                 ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoBringToFrontOnFocus))
         {
             ImGui::Text("%.0f fps %.3f ms", 1 / frame_time, frame_time * 1000.f);
-            for (uint16_t i = 0, c = input::manager::get_input_count(); i < c; i++) {
-                std::string_view n = input::manager::get_input_name(i);
-                float v = input::manager::get_input_value(i);
-                ImGui::Text("%.*s = %.03f", (int)n.length(), n.data(), v);
+            for (input::input_data input : input::manager::get_inputs()) {
+                ImGui::Text("%08" PRIx32 " %08" PRIx32 " %.*s", input.raw[0], input.raw[1], (int)input.name.length(), input.name.data());
             }
         }
         ImGui::End();
