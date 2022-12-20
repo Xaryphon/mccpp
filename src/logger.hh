@@ -50,7 +50,7 @@ void _message(const Source &source, Level level, fmt::format_string<Args...> for
 }
 
 #define _MCCPP_LOG(lvl, ...) mccpp::logger::_message( \
-        { __func__, __FILE__, __LINE__ }, lvl, __VA_ARGS__);
+        { __func__, __FILE__, __LINE__ }, lvl, __VA_ARGS__)
 #define MCCPP_F(...) _MCCPP_LOG(mccpp::logger::Level::FATAL, __VA_ARGS__)
 #define MCCPP_E(...) _MCCPP_LOG(mccpp::logger::Level::ERROR, __VA_ARGS__)
 #define MCCPP_I(...) _MCCPP_LOG(mccpp::logger::Level::INFO,  __VA_ARGS__)
