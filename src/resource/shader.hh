@@ -1,26 +1,29 @@
 #pragma once
 
-#include <memory>
-#include <string_view>
+#include <cassert>
 
 #include "resource.hh"
-#include "../utility/runtime_array.hh"
 
 namespace mccpp::resource {
 
-class shader : public resource {
+class shader_object final : public object<shader_object> {
 public:
-    shader() = default;
-    shader(const char *path);
-    ~shader() override;
+    shader_object(std::string &&path)
+    : object<shader_object>(std::move(path))
+    {}
 
-    void load(const char *path);
+    std::string_view data() {
+        assert(loaded());
+        return { reinterpret_cast<char*>(m_data.data()), m_data.size() };
+    }
 
-    char *data() { return m_data.data(); }
-    size_t length() { return m_data.size(); }
+protected:
+    bool do_load(bool force_reload) override;
 
 private:
-    utility::runtime_array<char> m_data;
+    utility::runtime_array<std::byte> m_data;
 };
+
+using shader = handle<shader_object>;
 
 }

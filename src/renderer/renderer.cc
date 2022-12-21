@@ -27,9 +27,13 @@ namespace mccpp::renderer {
 
 static bool _compile_shader(GLuint shader, const char *path)
 {
-    resource::shader source { path };
-    const char *source_pointer = source.data();
-    const int source_length = source.length();
+    std::string path_s = path;
+    resource::shader source { std::move(path_s) };
+    if (!source->load()) {
+        return false;
+    }
+    const char *source_pointer = source->data().data();
+    const int source_length = source->data().length();
 
     glShaderSource(shader, 1, &source_pointer, &source_length);
     glCompileShader(shader);
@@ -102,7 +106,7 @@ struct renderer {
     GLuint EBO;
 
     GLuint tex_uv;
-    resource::texture res_uv;
+    resource::texture res_uv { "mccpp/textures/misc/uv_16x16.png" };
 
     struct {
         glm::vec3 position;
@@ -213,7 +217,7 @@ void init()
     }
     MCCPP_SCOPE_FAIL { ImGui_ImplOpenGL3_Shutdown(); };
 
-    g_self.res_uv.load("assets/dev/textures/misc/uv_16x16.png");
+    g_self.res_uv->load();
 
     glGenTextures(1, &g_self.tex_uv);
     glBindTexture(GL_TEXTURE_2D, g_self.tex_uv);
@@ -221,12 +225,12 @@ void init()
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, g_self.res_uv.width(), g_self.res_uv.height(), 0, GL_RGB, GL_UNSIGNED_BYTE, g_self.res_uv.data());
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, g_self.res_uv->width(), g_self.res_uv->height(), 0, GL_RGB, GL_UNSIGNED_BYTE, g_self.res_uv->pixels().data());
 
     // FIXME: Handle errors with gl
     glEnable(GL_DEPTH_TEST);
 
-    g_self.shader.emplace("shaders/basic.vert", "shaders/basic.frag");
+    g_self.shader.emplace("mccpp/shaders/basic.vert", "mccpp/shaders/basic.frag");
 
     glGenVertexArrays(1, &g_self.VAO);
     glGenBuffers(1, &g_self.VBO);

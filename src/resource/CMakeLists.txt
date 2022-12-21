@@ -1,6 +1,6 @@
 target_sources(mccpp
     PRIVATE
-        manager.cc
+        resource.cc
         shader.cc
         texture.cc
 )

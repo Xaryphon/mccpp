@@ -37,22 +37,22 @@ public:
         return *this;
     }
 
-    T *data()
+    T *data() const
     {
         return m_data.get();
     }
 
-    bool empty()
+    bool empty() const
     {
         return data();
     }
 
-    T &operator[](size_t pos)
+    T &operator[](size_t pos) const
     {
         return data()[pos];
     }
 
-    size_t size()
+    size_t size() const
     {
         return m_size;
     }

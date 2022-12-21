@@ -1,22 +1,12 @@
 #include "shader.hh"
 
-#include "../utility/runtime_array.hh"
-#include "manager.hh"
-
 namespace mccpp::resource {
 
-shader::shader(const char *path)
-{
-    load(path);
-}
+bool shader_object::do_load(bool force_reload) {
+    (void)force_reload;
 
-shader::~shader()
-{
-}
-
-void shader::load(const char *path)
-{
-    m_data = manager::read_file(path);
+    m_data = read_file(resource_path());
+    return true;
 }
 
 }

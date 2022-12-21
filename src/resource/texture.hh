@@ -1,31 +1,41 @@
 #pragma once
 
-#include <memory>
-#include <string_view>
+#include <cassert>
 
 #include "resource.hh"
 
 namespace mccpp::resource {
 
-class texture : public resource {
+class texture_object final : public object<texture_object> {
 public:
-    texture() = default;
-    texture(const char *path);
-    ~texture() override;
+    texture_object(std::string &&path)
+    : object<texture_object>(std::move(path))
+    {}
 
-    void load(const char *path);
+    uint32_t width() {
+        assert(loaded());
+        return m_width;
+    }
 
-    uint32_t width();
-    uint32_t height();
+    uint32_t height() {
+        assert(loaded());
+        return m_height;
+    }
 
-    void *data();
-    size_t length();
+    const utility::runtime_array<std::byte> &pixels() {
+        assert(loaded());
+        return m_pixels;
+    }
+
+protected:
+    bool do_load(bool force_reload) override;
 
 private:
     uint32_t m_width;
     uint32_t m_height;
-    std::unique_ptr<char[]> m_data;
-    size_t m_length;
+    utility::runtime_array<std::byte> m_pixels;
 };
+
+using texture = handle<texture_object>;
 
 }
