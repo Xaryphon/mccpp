@@ -10,8 +10,12 @@
 #include "logger.hh"
 #include "input/input.hh"
 #include "renderer/renderer.hh"
+#include "utility/misc.hh"
+#include "utility/scope_guard.hh"
 
 namespace mccpp::application {
+
+#define MCCPP_SDL_FLAGS SDL_INIT_VIDEO
 
 struct {
     bool should_quit = false;
@@ -39,19 +43,15 @@ static void set_capture_mouse(bool state)
     SDL_SetRelativeMouseMode(state ? SDL_TRUE : SDL_FALSE);
 }
 
-// This a is pretty genius way of doing this if I do say so myshelf ;)
-[[nodiscard]]
-static bool _init_or_quit(bool init)
+static void init()
 {
     auto &I = g_app.input;
 
-    if (!init)
-        goto quit;
-
-    if (SDL_Init(SDL_INIT_VIDEO)) {
+    if (SDL_Init(MCCPP_SDL_FLAGS)) {
         MCCPP_F("SDL_Init failed: {}", SDL_GetError());
-        goto sdl_init_failed;
+        throw utility::init_error("SDL_Init");
     }
+    MCCPP_SCOPE_FAIL { SDL_QuitSubSystem(MCCPP_SDL_FLAGS); };
 
     input::mouse::assign(I.look.x, I.look.y);
     input::keyboard::assign(I.move.x, SDL_SCANCODE_D, SDL_SCANCODE_A);
@@ -62,34 +62,20 @@ static bool _init_or_quit(bool init)
 
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
+    MCCPP_SCOPE_FAIL { ImGui::DestroyContext(); };
     ImGui::StyleColorsDark();
 
-    if (!renderer::init()) {
-        goto renderer_init_failed;
-    }
+    renderer::init();
+    MCCPP_SCOPE_FAIL { renderer::destroy(); };
 
     set_capture_mouse(true);
-
-    return true;
-
-quit:
-    renderer::destroy();
-renderer_init_failed:
-    SDL_QuitSubSystem(SDL_INIT_VIDEO);
-sdl_init_failed:
-    ImGui::DestroyContext();
-    return false;
-}
-
-[[nodiscard]]
-static bool init()
-{
-    return _init_or_quit(true);
 }
 
 static void quit()
 {
-    (void) _init_or_quit(false);
+    renderer::destroy();
+    ImGui::DestroyContext();
+    SDL_QuitSubSystem(MCCPP_SDL_FLAGS);
 }
 
 static void poll_events()
@@ -133,8 +119,11 @@ int main(int argc, char **argv)
     (void)argc;
     (void)argv;
 
-    if (!init())
+    try {
+        init();
+    } catch (const utility::init_error &) {
         return 1;
+    }
 
     unsigned frame_count = 0;
     auto frame_last = std::chrono::steady_clock::now();

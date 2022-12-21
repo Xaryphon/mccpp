@@ -4,8 +4,7 @@
 
 namespace mccpp::renderer {
 
-[[nodiscard]]
-bool init();
+void init();
 void destroy();
 
 void frame_start();

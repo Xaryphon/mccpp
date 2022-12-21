@@ -18,6 +18,8 @@
 #include "../PerlinNoise.hpp"
 #include "../resource/shader.hh"
 #include "../resource/texture.hh"
+#include "../utility/misc.hh"
+#include "../utility/scope_guard.hh"
 #include "../world/chunk.hh"
 #include "vertex.hh"
 
@@ -164,12 +166,8 @@ world::chunk generate_debug_chunk2()
     return c;
 }
 
-[[nodiscard]]
-static bool _init_or_destroy(bool init)
+void init()
 {
-    if (!init)
-        goto destroy;
-
     //SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 0);
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3);
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 3);
@@ -181,18 +179,20 @@ static bool _init_or_destroy(bool init)
             SDL_WINDOW_OPENGL | SDL_WINDOW_HIDDEN | SDL_WINDOW_ALLOW_HIGHDPI);
     if (!g_self.window) {
         MCCPP_F("SDL_CreateWindow failed: {}", SDL_GetError());
-        goto create_window_failed;
+        throw utility::init_error("SDL_CreateWindow");
     }
+    MCCPP_SCOPE_FAIL { SDL_DestroyWindow(g_self.window); };
 
     g_self.gl_context = SDL_GL_CreateContext(g_self.window);
     if (!g_self.gl_context) {
         MCCPP_F("SDL_GL_CreateContext failed: {}", SDL_GetError());
-        goto create_gl_context_failed;
+        throw utility::init_error("SDL_GL_CreateContext");
     }
+    MCCPP_SCOPE_FAIL { SDL_GL_DeleteContext(g_self.gl_context); };
 
     if (!gladLoadGLLoader((GLADloadproc)SDL_GL_GetProcAddress)) {
         MCCPP_F("gladLoadGLLoader failed!");
-        goto load_glad_failed;
+        throw utility::init_error("gladLoadGLLoader");
     }
 
     SDL_GL_SetSwapInterval(1); // vsync
@@ -202,14 +202,16 @@ static bool _init_or_destroy(bool init)
     if (!ImGui_ImplSDL2_InitForOpenGL(g_self.window, g_self.gl_context))
     {
         MCCPP_F("ImGui_ImplSDL2_InitForOpenGL failed!");
-        goto init_imgui_sdl_failed;
+        throw utility::init_error("ImGui_ImplSDL2_InitForOpenGL");
     }
+    MCCPP_SCOPE_FAIL { ImGui_ImplSDL2_Shutdown(); };
 
     if (!ImGui_ImplOpenGL3_Init(nullptr))
     {
         MCCPP_F("ImGui_ImplOpenGL3_Init failed!");
-        goto init_imgui_gl_failed;
+        throw utility::init_error("ImGui_ImplOpenGL3_Init");
     }
+    MCCPP_SCOPE_FAIL { ImGui_ImplOpenGL3_Shutdown(); };
 
     g_self.res_uv.load("assets/dev/textures/misc/uv_16x16.png");
 
@@ -250,32 +252,15 @@ static bool _init_or_destroy(bool init)
     glFrontFace(GL_CCW);
 
     SDL_ShowWindow(g_self.window);
-
-    return true;
-
-destroy:
-    g_self.shader.reset();
-    ImGui_ImplOpenGL3_Shutdown();
-init_imgui_gl_failed:
-    ImGui_ImplSDL2_Shutdown();
-init_imgui_sdl_failed:
-load_glad_failed:
-    SDL_GL_DeleteContext(g_self.gl_context);
-create_gl_context_failed:
-    SDL_DestroyWindow(g_self.window);
-create_window_failed:
-    return false;
-}
-
-[[nodiscard]]
-bool init()
-{
-    return _init_or_destroy(true);
 }
 
 void destroy()
 {
-    (void)_init_or_destroy(false);
+    g_self.shader.reset();
+    ImGui_ImplOpenGL3_Shutdown();
+    ImGui_ImplSDL2_Shutdown();
+    SDL_GL_DeleteContext(g_self.gl_context);
+    SDL_DestroyWindow(g_self.window);
 }
 
 void frame_start()
