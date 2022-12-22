@@ -7,6 +7,7 @@
 #include <imgui.h>
 #include <SDL.h>
 
+#include "cvar.hh"
 #include "logger.hh"
 #include "input/input.hh"
 #include "renderer/renderer.hh"
@@ -52,6 +53,13 @@ static void init()
         throw utility::init_error("SDL_Init");
     }
     MCCPP_SCOPE_FAIL { SDL_QuitSubSystem(MCCPP_SDL_FLAGS); };
+
+    cvar::create("i_mouse_sensitivity", input::mouse::sensitivity(), [](float &value) {
+            if (value < 0.f)
+                return false;
+            input::mouse::sensitivity() = value;
+            return true;
+        });
 
     input::mouse::assign(I.look.x, I.look.y);
     input::keyboard::assign(I.move.x, SDL_SCANCODE_D, SDL_SCANCODE_A);
@@ -206,6 +214,21 @@ int main(int argc, char **argv)
         ImGui::DragFloat3("Velocity", glm::value_ptr(move_speed));
         float velocity = glm::length(move_speed);
         ImGui::DragFloat("|Velocity|", &velocity);
+
+        for (cvar &var : cvar::range()) {
+            float v = var.value();
+            if (ImGui::InputFloat(var.name().c_str(), &v,
+                    0.f, 0.f, "%.5f",
+                    ImGuiInputTextFlags_EnterReturnsTrue)) {
+                var.set_value(v);
+            }
+            std::string_view help = var.help();
+            if (!help.empty() && ImGui::IsItemHovered()) {
+                ImGui::BeginTooltip();
+                ImGui::TextUnformatted(help.data(), help.data() + help.size());
+                ImGui::EndTooltip();
+            }
+        }
 
         renderer::frame_end();
 

@@ -6,6 +6,7 @@ add_subdirectory(world)
 target_sources(mccpp
     PRIVATE
         application.cc
+        cvar.cc
         logger.cc
         main.cc
 )

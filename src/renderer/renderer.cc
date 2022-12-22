@@ -21,6 +21,7 @@
 #include "../utility/misc.hh"
 #include "../utility/scope_guard.hh"
 #include "../world/chunk.hh"
+#include "../cvar.hh"
 #include "vertex.hh"
 
 namespace mccpp::renderer {
@@ -254,6 +255,19 @@ void init()
     glEnable(GL_CULL_FACE);
     glCullFace(GL_BACK);
     glFrontFace(GL_CCW);
+
+    cvar::create("r_wireframe", 0, [](float value) {
+        if (value == 0.f) {
+            glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+        } else if (value == 1.f) {
+            glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+        } else if (value == 2.f) {
+            glPolygonMode(GL_FRONT_AND_BACK, GL_POINT);
+        } else {
+            return false;
+        }
+        return true;
+    });
 
     SDL_ShowWindow(g_self.window);
 }
