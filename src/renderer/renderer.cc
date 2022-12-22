@@ -22,86 +22,19 @@
 #include "../utility/scope_guard.hh"
 #include "../world/chunk.hh"
 #include "../cvar.hh"
+#include "shader.hh"
 #include "vertex.hh"
 
 namespace mccpp::renderer {
-
-static bool _compile_shader(GLuint shader, const char *path)
-{
-    std::string path_s = path;
-    resource::shader source { std::move(path_s) };
-    if (!source->load()) {
-        return false;
-    }
-    const char *source_pointer = source->data().data();
-    const int source_length = source->data().length();
-
-    glShaderSource(shader, 1, &source_pointer, &source_length);
-    glCompileShader(shader);
-
-    GLint glstatus;
-    glGetShaderiv(shader, GL_COMPILE_STATUS, &glstatus);
-    if (glstatus != GL_TRUE)
-    {
-        GLint elen;
-        glGetShaderiv(shader, GL_INFO_LOG_LENGTH, &elen);
-
-        auto emsg = std::make_unique<char[]>(elen);
-        glGetShaderInfoLog(shader, elen, &elen, emsg.get());
-        MCCPP_E("glCompileShader failed for {}: {}", path, emsg.get());
-        return false;
-    }
-
-    return true;
-}
-
-static bool _link_program(GLuint program)
-{
-    glLinkProgram(program);
-
-    GLint glstatus;
-    glGetProgramiv(program, GL_LINK_STATUS, &glstatus);
-    if (glstatus != GL_TRUE)
-    {
-        GLint elen;
-        glGetProgramiv(program, GL_INFO_LOG_LENGTH, &elen);
-
-        auto emsg = std::make_unique<char[]>(elen);
-        glGetProgramInfoLog(program, elen, &elen, emsg.get());
-        MCCPP_E("glLinkProgram failed: {}", emsg.get());
-        return false;
-    }
-
-    return true;
-}
-
-class shader {
-public:
-    shader();
-    shader(const char *vert, const char *frag)
-    : shader()
-    {
-        load(vert, frag);
-    }
-    ~shader();
-    void load(const char *vert, const char *frag);
-
-    void use()
-    {
-        glUseProgram(m_program);
-    }
-
-private:
-    GLuint m_vert;
-    GLuint m_frag;
-    GLuint m_program;
-};
 
 struct renderer {
     SDL_Window   *window = nullptr;
     SDL_GLContext gl_context = nullptr;
 
-    std::optional<class shader> shader;
+    class shader shader {
+        { shader::VERTEX,   "mccpp/shaders/basic.vert" },
+        { shader::FRAGMENT, "mccpp/shaders/basic.frag" },
+    };
     GLuint VAO;
     GLuint VBO;
     GLuint EBO;
@@ -114,29 +47,6 @@ struct renderer {
         glm::vec3 rotation;
     } camera;
 } g_self = {};
-
-shader::shader()
-: m_vert(glCreateShader(GL_VERTEX_SHADER))
-, m_frag(glCreateShader(GL_FRAGMENT_SHADER))
-, m_program(glCreateProgram())
-{
-    glAttachShader(m_program, m_vert);
-    glAttachShader(m_program, m_frag);
-}
-
-shader::~shader()
-{
-    glDeleteShader(m_vert);
-    glDeleteShader(m_frag);
-    glDeleteProgram(m_program);
-}
-
-void shader::load(const char *vert, const char *frag)
-{
-    _compile_shader(m_vert, vert);
-    _compile_shader(m_frag, frag);
-    _link_program(m_program);
-}
 
 world::chunk generate_debug_chunk()
 {
@@ -218,6 +128,7 @@ void init()
     }
     MCCPP_SCOPE_FAIL { ImGui_ImplOpenGL3_Shutdown(); };
 
+    g_self.shader.load();
     g_self.res_uv->load();
 
     glGenTextures(1, &g_self.tex_uv);
@@ -230,8 +141,6 @@ void init()
 
     // FIXME: Handle errors with gl
     glEnable(GL_DEPTH_TEST);
-
-    g_self.shader.emplace("mccpp/shaders/basic.vert", "mccpp/shaders/basic.frag");
 
     glGenVertexArrays(1, &g_self.VAO);
     glGenBuffers(1, &g_self.VBO);
@@ -292,7 +201,7 @@ void init()
 
 void destroy()
 {
-    g_self.shader.reset();
+    g_self.shader.unload();
     ImGui_ImplOpenGL3_Shutdown();
     ImGui_ImplSDL2_Shutdown();
     SDL_GL_DeleteContext(g_self.gl_context);
@@ -324,7 +233,7 @@ void frame_end()
     glm::mat4 P = glm::perspective(glm::radians(90.0f), (float)width / (float)height, 0.1f, 100.0f);
     glm::mat4 VP = P * V;
 
-    g_self.shader->use();
+    glUseProgram(g_self.shader.id());
     glUniformMatrix4fv(0, 1, false, glm::value_ptr(VP));
 
     glActiveTexture(GL_TEXTURE0);
