@@ -256,6 +256,24 @@ void init()
     glCullFace(GL_BACK);
     glFrontFace(GL_CCW);
 
+    cvar::create("r_cull_faces", 1, [](float value) {
+        if (value == 0.f) {
+            glDisable(GL_CULL_FACE);
+        } else if (value == 1.f) {
+            glEnable(GL_CULL_FACE);
+            glCullFace(GL_BACK);
+        } else if (value == 2.f) {
+            glEnable(GL_CULL_FACE);
+            glCullFace(GL_FRONT);
+        } else if (value == 3.f) {
+            glEnable(GL_CULL_FACE);
+            glCullFace(GL_FRONT_AND_BACK);
+        } else {
+            return false;
+        }
+        return true;
+    });
+
     cvar::create("r_wireframe", 0, [](float value) {
         if (value == 0.f) {
             glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
