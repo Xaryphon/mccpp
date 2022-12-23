@@ -141,8 +141,10 @@ bool shader::load(bool force_reload) {
 }
 
 void shader::unload() {
-    glDeleteShader(m_id);
-    m_id = 0;
+    if (m_id) {
+        glDeleteShader(m_id);
+        m_id = 0;
+    }
 }
 
 }
