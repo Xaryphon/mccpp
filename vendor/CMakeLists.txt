@@ -110,3 +110,12 @@ CPMAddPackage(
         "FMT_DOC OFF"
         "FMT_TEST OFF"
 )
+
+
+#:: Catch2
+
+CPMAddPackage(
+    NAME Catch2
+    GIT_REPOSITORY https://github.com/catchorg/Catch2.git
+    GIT_TAG        ab6c7375be9a8e71ee84c6f8537113f9f47daf99 # v3.2.1
+)

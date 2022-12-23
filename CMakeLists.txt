@@ -28,3 +28,4 @@ target_link_libraries(mccpp
 )
 
 add_subdirectory(src)
+add_subdirectory(test EXCLUDE_FROM_ALL)
