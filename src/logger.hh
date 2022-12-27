@@ -33,6 +33,8 @@ public:
     virtual void message(const Source &source, const Message &message) = 0;
 };
 
+void set_thread_name(std::string &&name);
+
 void _message(const Source &source, const Message &message);
 
 inline void _message(const Source &source, Level level, const std::string_view &message)

@@ -5,8 +5,17 @@
 #include <vector>
 #include <iostream>
 #include <chrono>
+#include <thread>
 
 namespace mccpp::logger {
+
+std::string thread_default_name() {
+    std::stringstream stream;
+    stream << std::showbase << std::hex << std::this_thread::get_id();
+    return stream.str();
+}
+
+thread_local std::string t_name = thread_default_name();
 
 inline void _log_stderr(const Source &source, const Message &message)
 {
@@ -24,14 +33,25 @@ inline void _log_stderr(const Source &source, const Message &message)
     }
 
     stream << color;
-    stream << level_char;
-    stream << ' ' << source.file << ':' << source.line;
-    stream << ' ' << message.data;
+    std::string_view content = message.data;
+    while (!content.empty()) {
+        auto line_end = content.find('\n');
+        std::string_view line = content.substr(0, line_end);
+        stream << level_char;
+        stream << ' ' << t_name;
+        stream << ' ' << source.file << ':' << source.line;
+        stream << ' ' << line;
+        if (line_end == content.npos) {
+            break;
+        }
+        content = content.substr(line_end + 1, content.size() - line_end - 1);
+        stream << '\n';
+    }
     stream << "\033[0m";
     stream << '\n';
 
     stream.flush();
-    }
+}
 
 std::vector<Callback *> g_callbacks;
 
@@ -43,6 +63,10 @@ Callback::~Callback() {
     auto iter = std::find(g_callbacks.begin(), g_callbacks.end(), this);
     assert(iter != g_callbacks.end());
     g_callbacks.erase(iter);
+}
+
+void set_thread_name(std::string &&name) {
+    t_name = name;
 }
 
 void _message(const Source &source, const Message &message)
