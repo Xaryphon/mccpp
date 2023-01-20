@@ -6,7 +6,8 @@
 #include <type_traits>
 #include <limits>
 
-#include "decode_exception.hh"
+#include "exceptions.hh"
+#include "../utility/coro.hh"
 
 namespace mccpp::proto {
 
@@ -34,7 +35,7 @@ namespace varint_impl {
     }
 
     template<typename TS, typename TCallback>
-    TS read_impl(TCallback read_byte_callback) {
+    task<TS> async_read_impl(TCallback read_byte_callback) {
         static_assert(std::is_integral_v<TS>);
         static_assert(std::numeric_limits<TS>::is_signed);
 
@@ -42,7 +43,7 @@ namespace varint_impl {
         TU value = 0;
         std::size_t position = 0;
         while (true) {
-            std::byte byte_ = read_byte_callback();
+            std::byte byte_ = co_await read_byte_callback();
             uint8_t byte = static_cast<uint8_t>(byte_);
 
             value |= TU(byte & SEGMENT_BITS) << position;
@@ -52,37 +53,64 @@ namespace varint_impl {
 
             position += 7;
 
-            // FIXME: Throw an exception instead
-            assert(position < std::numeric_limits<TU>::digits);
             if (position >= std::numeric_limits<TU>::digits)
-                throw decode_exception("invalid varint");
+                throw decode_error("invalid varint");
         }
 
-        return std::bit_cast<TS>(value);
+        co_return std::bit_cast<TS>(value);
+    }
+
+    template<typename TS, typename TCallback>
+    TS read_impl(TCallback &&read_byte_callback) {
+        struct async_reader {
+            constexpr bool await_ready() noexcept { return true; }
+            constexpr void await_suspend(std::coroutine_handle<>) noexcept {}
+            std::byte await_resume() { return callback(); }
+
+            async_reader &operator()() {
+                return *this;
+            }
+
+            TCallback callback;
+        } async_read_byte_callback = { std::move(read_byte_callback) };
+        task<TS> task = async_read_impl<TS>(std::move(async_read_byte_callback));
+        task.handle().resume();
+        assert(task.handle().done());
+        return task.await_resume();
     }
 }
 
 namespace varint {
     template<typename T>
-    void write(int32_t value, T write_byte_callback) {
-        varint_impl::write_impl<int32_t>(value, write_byte_callback);
+    void write(int32_t value, T &&write_byte_callback) {
+        varint_impl::write_impl<int32_t>(value, std::move(write_byte_callback));
     }
 
     template<typename T>
-    int32_t read(T read_byte_callback) {
-        return varint_impl::read_impl<int32_t>(read_byte_callback);
+    task<int32_t> async_read(T &&read_byte_callback) {
+        return varint_impl::async_read_impl<int32_t>(std::move(read_byte_callback));
+    }
+
+    template<typename T>
+    int32_t read(T &&read_byte_callback) {
+        return varint_impl::read_impl<int32_t>(std::move(read_byte_callback));
     }
 }
 
 namespace varlong {
     template<typename T>
-    void write(int64_t value, T write_byte_callback) {
-        varint_impl::write_impl<int64_t>(value, write_byte_callback);
+    void write(int64_t value, T &&write_byte_callback) {
+        varint_impl::write_impl<int64_t>(value, std::move(write_byte_callback));
     }
 
     template<typename T>
-    int64_t read(T read_byte_callback) {
-        return varint_impl::read_impl<int64_t>(read_byte_callback);
+    task<int64_t> async_read(T &&read_byte_callback) {
+        return varint_impl::async_read_impl<int64_t>(std::move(read_byte_callback));
+    }
+
+    template<typename T>
+    int64_t read(T &&read_byte_callback) {
+        return varint_impl::read_impl<int64_t>(std::move(read_byte_callback));
     }
 }
 

@@ -4,7 +4,7 @@
 
 #define MCCPP_FORWARD(to, ...) to(__VA_ARGS__)
 
-namespace mccpp::utility {
+namespace mccpp {
 
 class init_error : public std::runtime_error {
 public:

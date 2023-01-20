@@ -50,7 +50,7 @@ static void init()
 
     if (SDL_Init(MCCPP_SDL_FLAGS)) {
         MCCPP_F("SDL_Init failed: {}", SDL_GetError());
-        throw utility::init_error("SDL_Init");
+        throw init_error("SDL_Init");
     }
     MCCPP_SCOPE_FAIL { SDL_QuitSubSystem(MCCPP_SDL_FLAGS); };
 
@@ -129,7 +129,7 @@ int main(int argc, char **argv)
 
     try {
         init();
-    } catch (const utility::init_error &) {
+    } catch (const init_error &) {
         return 1;
     }
 

@@ -3,3 +3,4 @@ build/
 imgui.ini
 assets/minecraft/
 .cache/
+__pycache__/

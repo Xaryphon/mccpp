@@ -2,7 +2,7 @@
 
 #include <memory>
 
-namespace mccpp::utility {
+namespace mccpp {
 
 template<typename T>
 class runtime_array {

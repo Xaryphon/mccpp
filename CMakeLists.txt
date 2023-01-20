@@ -19,6 +19,7 @@ target_link_libraries(mccpp
         SDL2::SDL2
         fmt::fmt
         glm::glm
+        asio
     PRIVATE
         glad
         imgui

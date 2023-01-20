@@ -5,7 +5,7 @@
 
 #include "misc.hh"
 
-namespace mccpp::utility {
+namespace mccpp {
 
 template<typename F>
 class scope_exit {
@@ -70,7 +70,7 @@ private:
 
 }
 
-#define _MCCPP_SCOPE_GUARD(type, line) mccpp::utility::type xx_##type##_##line = [&]
+#define _MCCPP_SCOPE_GUARD(type, line) mccpp::type xx_##type##_##line = [&]
 #define MCCPP_SCOPE_EXIT    MCCPP_FORWARD(_MCCPP_SCOPE_GUARD, scope_exit,    __LINE__)
 #define MCCPP_SCOPE_FAIL    MCCPP_FORWARD(_MCCPP_SCOPE_GUARD, scope_fail,    __LINE__)
 #define MCCPP_SCOPE_SUCCESS MCCPP_FORWARD(_MCCPP_SCOPE_GUARD, scope_success, __LINE__)

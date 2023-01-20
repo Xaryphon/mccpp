@@ -1,4 +1,6 @@
+add_subdirectory(client)
 add_subdirectory(input)
+add_subdirectory(proto)
 add_subdirectory(renderer)
 add_subdirectory(resource)
 add_subdirectory(world)

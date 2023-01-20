@@ -9,7 +9,7 @@
 
 namespace mccpp::resource {
 
-utility::runtime_array<std::byte> read_file(const std::string &);
+runtime_array<std::byte> read_file(const std::string &);
 
 template<typename TObject>
 class object;

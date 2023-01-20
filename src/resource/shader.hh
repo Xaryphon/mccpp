@@ -21,7 +21,7 @@ protected:
     bool do_load(bool force_reload) override;
 
 private:
-    utility::runtime_array<std::byte> m_data;
+    runtime_array<std::byte> m_data;
 };
 
 using shader = handle<shader_object>;

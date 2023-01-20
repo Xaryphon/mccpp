@@ -38,7 +38,7 @@ bool texture_object::do_load(bool force_reload) {
         return false;
     }
 
-    m_pixels = utility::runtime_array<std::byte>(texture_size);
+    m_pixels = runtime_array<std::byte>(texture_size);
     error = spng_decode_image(ctx, m_pixels.data(), m_pixels.size(), SPNG_FMT_RGB8, 0);
     if (error) {
         MCCPP_W("{}: spng_decode_image failed: {}", resource_path(), spng_strerror(error));

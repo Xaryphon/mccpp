@@ -94,20 +94,20 @@ void init()
             SDL_WINDOW_OPENGL | SDL_WINDOW_HIDDEN | SDL_WINDOW_ALLOW_HIGHDPI);
     if (!g_self.window) {
         MCCPP_F("SDL_CreateWindow failed: {}", SDL_GetError());
-        throw utility::init_error("SDL_CreateWindow");
+        throw init_error("SDL_CreateWindow");
     }
     MCCPP_SCOPE_FAIL { SDL_DestroyWindow(g_self.window); };
 
     g_self.gl_context = SDL_GL_CreateContext(g_self.window);
     if (!g_self.gl_context) {
         MCCPP_F("SDL_GL_CreateContext failed: {}", SDL_GetError());
-        throw utility::init_error("SDL_GL_CreateContext");
+        throw init_error("SDL_GL_CreateContext");
     }
     MCCPP_SCOPE_FAIL { SDL_GL_DeleteContext(g_self.gl_context); };
 
     if (!gladLoadGLLoader((GLADloadproc)SDL_GL_GetProcAddress)) {
         MCCPP_F("gladLoadGLLoader failed!");
-        throw utility::init_error("gladLoadGLLoader");
+        throw init_error("gladLoadGLLoader");
     }
 
     SDL_GL_SetSwapInterval(1); // vsync
@@ -117,14 +117,14 @@ void init()
     if (!ImGui_ImplSDL2_InitForOpenGL(g_self.window, g_self.gl_context))
     {
         MCCPP_F("ImGui_ImplSDL2_InitForOpenGL failed!");
-        throw utility::init_error("ImGui_ImplSDL2_InitForOpenGL");
+        throw init_error("ImGui_ImplSDL2_InitForOpenGL");
     }
     MCCPP_SCOPE_FAIL { ImGui_ImplSDL2_Shutdown(); };
 
     if (!ImGui_ImplOpenGL3_Init(nullptr))
     {
         MCCPP_F("ImGui_ImplOpenGL3_Init failed!");
-        throw utility::init_error("ImGui_ImplOpenGL3_Init");
+        throw init_error("ImGui_ImplOpenGL3_Init");
     }
     MCCPP_SCOPE_FAIL { ImGui_ImplOpenGL3_Shutdown(); };
 

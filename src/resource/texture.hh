@@ -22,7 +22,7 @@ public:
         return m_height;
     }
 
-    const utility::runtime_array<std::byte> &pixels() {
+    const runtime_array<std::byte> &pixels() {
         assert(loaded());
         return m_pixels;
     }
@@ -33,7 +33,7 @@ protected:
 private:
     uint32_t m_width;
     uint32_t m_height;
-    utility::runtime_array<std::byte> m_pixels;
+    runtime_array<std::byte> m_pixels;
 };
 
 using texture = handle<texture_object>;
