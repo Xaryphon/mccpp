@@ -27,26 +27,39 @@
 
 namespace mccpp::renderer {
 
-struct renderer {
-    SDL_Window   *window = nullptr;
-    SDL_GLContext gl_context = nullptr;
+class renderer_impl final : public renderer {
+public:
+    renderer_impl(application &);
+    ~renderer_impl();
 
-    class shader shader {
+    void start_frame() override;
+    void end_frame() override;
+
+    struct camera &camera() override {
+        return m_camera;
+    }
+
+private:
+    SDL_Window   *m_window = nullptr;
+    SDL_GLContext m_gl_context = nullptr;
+
+    class shader m_shader {
         { shader::VERTEX,   "mccpp/shaders/basic.vert" },
         { shader::FRAGMENT, "mccpp/shaders/basic.frag" },
     };
-    GLuint VAO;
-    GLuint VBO;
-    GLuint EBO;
+    GLuint m_VAO = 0;
+    GLuint m_VBO = 0;
+    GLuint m_EBO = 0;
 
-    GLuint tex_uv;
-    resource::texture res_uv { "mccpp/textures/misc/uv_16x16.png" };
+    GLuint m_tex_uv = 0;
+    resource::texture m_res_uv { "mccpp/textures/misc/uv_16x16.png" };
 
-    struct {
-        glm::vec3 position;
-        glm::vec3 rotation;
-    } camera;
-} g_self = {};
+    struct camera m_camera = {};
+};
+
+std::unique_ptr<renderer> renderer::create(application &app) {
+    return std::make_unique<renderer_impl>(app);
+}
 
 world::chunk generate_debug_chunk()
 {
@@ -81,29 +94,30 @@ world::chunk generate_debug_chunk2()
     return c;
 }
 
-void init()
-{
+renderer_impl::renderer_impl(application &app) {
+    (void)app;
+
     //SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 0);
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3);
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 3);
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_FLAGS,         SDL_GL_CONTEXT_FORWARD_COMPATIBLE_FLAG);
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK,  SDL_GL_CONTEXT_PROFILE_CORE);
 
-    g_self.window = SDL_CreateWindow("mccpp",
+    m_window = SDL_CreateWindow("mccpp",
             SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, 1280, 720,
             SDL_WINDOW_OPENGL | SDL_WINDOW_HIDDEN | SDL_WINDOW_ALLOW_HIGHDPI);
-    if (!g_self.window) {
+    if (!m_window) {
         MCCPP_F("SDL_CreateWindow failed: {}", SDL_GetError());
         throw init_error("SDL_CreateWindow");
     }
-    MCCPP_SCOPE_FAIL { SDL_DestroyWindow(g_self.window); };
+    MCCPP_SCOPE_FAIL { SDL_DestroyWindow(m_window); };
 
-    g_self.gl_context = SDL_GL_CreateContext(g_self.window);
-    if (!g_self.gl_context) {
+    m_gl_context = SDL_GL_CreateContext(m_window);
+    if (!m_gl_context) {
         MCCPP_F("SDL_GL_CreateContext failed: {}", SDL_GetError());
         throw init_error("SDL_GL_CreateContext");
     }
-    MCCPP_SCOPE_FAIL { SDL_GL_DeleteContext(g_self.gl_context); };
+    MCCPP_SCOPE_FAIL { SDL_GL_DeleteContext(m_gl_context); };
 
     if (!gladLoadGLLoader((GLADloadproc)SDL_GL_GetProcAddress)) {
         MCCPP_F("gladLoadGLLoader failed!");
@@ -114,7 +128,7 @@ void init()
 
     MCCPP_I("Loaded GL {}.{}", GLVersion.major, GLVersion.minor);
 
-    if (!ImGui_ImplSDL2_InitForOpenGL(g_self.window, g_self.gl_context))
+    if (!ImGui_ImplSDL2_InitForOpenGL(m_window, m_gl_context))
     {
         MCCPP_F("ImGui_ImplSDL2_InitForOpenGL failed!");
         throw init_error("ImGui_ImplSDL2_InitForOpenGL");
@@ -128,27 +142,27 @@ void init()
     }
     MCCPP_SCOPE_FAIL { ImGui_ImplOpenGL3_Shutdown(); };
 
-    g_self.shader.load();
-    g_self.res_uv->load();
+    m_shader.load();
+    m_res_uv->load();
 
-    glGenTextures(1, &g_self.tex_uv);
-    glBindTexture(GL_TEXTURE_2D, g_self.tex_uv);
+    glGenTextures(1, &m_tex_uv);
+    glBindTexture(GL_TEXTURE_2D, m_tex_uv);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, g_self.res_uv->width(), g_self.res_uv->height(), 0, GL_RGB, GL_UNSIGNED_BYTE, g_self.res_uv->pixels().data());
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, m_res_uv->width(), m_res_uv->height(), 0, GL_RGB, GL_UNSIGNED_BYTE, m_res_uv->pixels().data());
 
     // FIXME: Handle errors with gl
     glEnable(GL_DEPTH_TEST);
 
-    glGenVertexArrays(1, &g_self.VAO);
-    glGenBuffers(1, &g_self.VBO);
-    glGenBuffers(1, &g_self.EBO);
+    glGenVertexArrays(1, &m_VAO);
+    glGenBuffers(1, &m_VBO);
+    glGenBuffers(1, &m_EBO);
 
-    glBindVertexArray(g_self.VAO);
-    glBindBuffer(GL_ARRAY_BUFFER, g_self.VBO);
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, g_self.EBO);
+    glBindVertexArray(m_VAO);
+    glBindBuffer(GL_ARRAY_BUFFER, m_VBO);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, m_EBO);
 
     glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(vertex), reinterpret_cast<const void*>(offsetof(vertex, position)));
     glEnableVertexAttribArray(0);
@@ -196,34 +210,34 @@ void init()
         return true;
     });
 
-    SDL_ShowWindow(g_self.window);
+    SDL_ShowWindow(m_window);
 }
 
-void destroy()
+renderer_impl::~renderer_impl()
 {
-    g_self.shader.unload();
+    m_shader.unload();
     ImGui_ImplOpenGL3_Shutdown();
     ImGui_ImplSDL2_Shutdown();
-    SDL_GL_DeleteContext(g_self.gl_context);
-    SDL_DestroyWindow(g_self.window);
+    SDL_GL_DeleteContext(m_gl_context);
+    SDL_DestroyWindow(m_window);
 }
 
-void frame_start()
+void renderer_impl::start_frame()
 {
-    SDL_GL_MakeCurrent(g_self.window, g_self.gl_context);
+    SDL_GL_MakeCurrent(m_window, m_gl_context);
     ImGui_ImplOpenGL3_NewFrame();
 }
 
-void frame_end()
+void renderer_impl::end_frame()
 {
     int width, height;
-    SDL_GL_GetDrawableSize(g_self.window, &width, &height);
+    SDL_GL_GetDrawableSize(m_window, &width, &height);
 
     static const auto chunk = generate_debug_chunk();
     static auto [vertices, indicies] = chunk.generate_vertices();
 
-    glm::vec3 &camera_position = g_self.camera.position;
-    glm::vec3 &camera_rotation = g_self.camera.rotation;
+    glm::vec3 &camera_position = m_camera.position;
+    glm::vec3 &camera_rotation = m_camera.rotation;
 
     glm::mat4 V = glm::mat4(1.0f);
     V = glm::rotate(V, -camera_rotation.y, glm::vec3(1.0f, 0.0f, 0.0f));
@@ -233,14 +247,14 @@ void frame_end()
     glm::mat4 P = glm::perspective(glm::radians(90.0f), (float)width / (float)height, 0.1f, 100.0f);
     glm::mat4 VP = P * V;
 
-    glUseProgram(g_self.shader.id());
+    glUseProgram(m_shader.id());
     glUniformMatrix4fv(0, 1, false, glm::value_ptr(VP));
 
     glActiveTexture(GL_TEXTURE0);
-    glBindTexture(GL_TEXTURE_2D, g_self.tex_uv);
+    glBindTexture(GL_TEXTURE_2D, m_tex_uv);
     glUniform1i(1, 0);
 
-    glBindVertexArray(g_self.VAO);
+    glBindVertexArray(m_VAO);
     glBufferData(GL_ARRAY_BUFFER, vertices.size() * sizeof(vertex), vertices.data(), GL_DYNAMIC_DRAW);
     glBufferData(GL_ELEMENT_ARRAY_BUFFER, indicies.size() * sizeof(unsigned), indicies.data(), GL_DYNAMIC_DRAW);
 
@@ -254,17 +268,7 @@ void frame_end()
     ImGui::Render();
     ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 
-    SDL_GL_SwapWindow(g_self.window);
-}
-
-glm::vec3 &camera::position()
-{
-    return g_self.camera.position;
-}
-
-glm::vec3 &camera::rotation()
-{
-    return g_self.camera.rotation;
+    SDL_GL_SwapWindow(m_window);
 }
 
 }

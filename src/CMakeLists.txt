@@ -9,6 +9,7 @@ target_sources(mccpp
     PRIVATE
         application.cc
         cvar.cc
+        game.cc
         logger.cc
         main.cc
 )

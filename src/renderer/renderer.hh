@@ -1,20 +1,26 @@
 #pragma once
 
+#include <memory>
+
 #include <glm/glm.hpp>
+
+#include "../application.hh"
 
 namespace mccpp::renderer {
 
-void init();
-void destroy();
+struct camera {
+    glm::vec3 position;
+    glm::vec3 rotation;
+};
 
-void frame_start();
-void frame_end();
+class renderer {
+public:
+    static std::unique_ptr<renderer> create(application &);
 
-namespace camera {
+    virtual void start_frame() = 0;
+    virtual void end_frame() = 0;
 
-glm::vec3 &position();
-glm::vec3 &rotation();
-
-}
+    virtual struct camera &camera() = 0;
+};
 
 };
