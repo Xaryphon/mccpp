@@ -19,6 +19,11 @@ namespace mccpp {
 
 class application_impl final : public application {
 public:
+    input::manager &input_manager() override {
+        assert(m_input_manager.get());
+        return *m_input_manager;
+    }
+
     renderer::renderer &renderer() override {
         assert(m_renderer.get());
         return *m_renderer;
@@ -41,6 +46,7 @@ private:
 
     unsigned m_frame_count;
 
+    std::unique_ptr<input::manager> m_input_manager;
     std::unique_ptr<renderer::renderer> m_renderer;
     std::unique_ptr<class game> m_game;
 
@@ -85,11 +91,11 @@ static void poll_events(application_impl &app) {
         case SDL_KEYUP:
             if (io.WantCaptureKeyboard)
                 break;
-            input::manager::handle_event(event);
+            app.input_manager().handle_event(event);
             break;
         case SDL_MOUSEMOTION:
             if (app.capture_mouse()) {
-                input::manager::handle_event(event);
+                app.input_manager().handle_event(event);
             }
             break;
         default:
@@ -122,15 +128,16 @@ int main(int argc, char **argv)
     g_app = &app;
     MCCPP_SCOPE_EXIT { g_app = nullptr; };
 
+    app.m_input_manager = input::manager::create(app);
     app.m_renderer = renderer::renderer::create(app);
     app.m_game = game::create(app);
 
-    input::button unlock_cursor { "unlock_cursor" };
-    input::keyboard::assign(unlock_cursor, SDL_SCANCODE_LALT);
+    input::button unlock_cursor = app.m_input_manager->create_button("unlock_cursor");
+    app.m_input_manager->keyboard_assign(unlock_cursor, SDL_SCANCODE_LALT);
     app.capture_mouse(false);
 
     while (!app.should_exit()) {
-        input::manager::reset_deltas();
+        app.m_input_manager->reset_deltas();
         poll_events(app);
 
         if (unlock_cursor.down()) {

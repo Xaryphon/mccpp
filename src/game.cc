@@ -20,6 +20,7 @@ public:
     float delta_time() override { return m_frame_time; }
 
 private:
+    input::manager &m_input_manager;
     renderer::renderer &m_renderer;
 
     std::chrono::steady_clock::time_point m_frame_last;
@@ -27,15 +28,15 @@ private:
 
     struct {
         struct {
-            input::axis x { "look.x" };
-            input::axis y { "look.y" };
+            input::axis x;
+            input::axis y;
         } look;
         struct {
-            input::axis x { "move.x" };
-            input::axis y { "move.y" };
+            input::axis x;
+            input::axis y;
         } move;
-        input::button jump  { "jump" };
-        input::button sneak { "sneak" };
+        input::button jump;
+        input::button sneak;
     } m_input;
 };
 
@@ -44,14 +45,26 @@ std::unique_ptr<game> game::create(application &app) {
 }
 
 game_impl::game_impl(application &app)
-: m_renderer(app.renderer())
+: m_input_manager(app.input_manager())
+, m_renderer(app.renderer())
+, m_input {
+        .look = {
+            .x = m_input_manager.create_axis("look.x"),
+            .y = m_input_manager.create_axis("look.y"),
+        },
+        .move = {
+            .x = m_input_manager.create_axis("move.x"),
+            .y = m_input_manager.create_axis("move.y"),
+        },
+        .jump = m_input_manager.create_button("jump"),
+        .sneak = m_input_manager.create_button("sneak"),
+    }
 {
-    auto &I = m_input;
-    input::mouse::assign(I.look.x, I.look.y);
-    input::keyboard::assign(I.move.x, SDL_SCANCODE_D, SDL_SCANCODE_A);
-    input::keyboard::assign(I.move.y, SDL_SCANCODE_S, SDL_SCANCODE_W);
-    input::keyboard::assign(I.jump, SDL_SCANCODE_SPACE);
-    input::keyboard::assign(I.sneak, SDL_SCANCODE_LSHIFT);
+    m_input_manager.mouse_assign(m_input.look.x, m_input.look.y);
+    m_input_manager.keyboard_assign(m_input.move.x, SDL_SCANCODE_D, SDL_SCANCODE_A);
+    m_input_manager.keyboard_assign(m_input.move.y, SDL_SCANCODE_S, SDL_SCANCODE_W);
+    m_input_manager.keyboard_assign(m_input.jump, SDL_SCANCODE_SPACE);
+    m_input_manager.keyboard_assign(m_input.sneak, SDL_SCANCODE_LSHIFT);
 
     m_frame_last = std::chrono::steady_clock::now();
 }
@@ -98,7 +111,7 @@ void game_impl::on_frame() {
             ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoBringToFrontOnFocus))
     {
         ImGui::Text("%.0f fps %.3f ms", 1 / m_frame_time, m_frame_time * 1000.f);
-        for (input::input_data input : input::manager::get_inputs()) {
+        for (input::input_data input : m_input_manager) {
             ImGui::Text("%08" PRIx32 " %08" PRIx32 " %.*s", input.raw[0], input.raw[1], (int)input.name.length(), input.name.data());
         }
     }

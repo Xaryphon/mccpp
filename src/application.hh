@@ -2,6 +2,10 @@
 
 namespace mccpp {
 
+namespace input {
+    class manager;
+}
+
 namespace renderer {
     class renderer;
 }
@@ -10,6 +14,7 @@ class application {
 public:
     virtual ~application() = default;
 
+    virtual class input::manager &input_manager() = 0;
     virtual renderer::renderer &renderer() = 0;
     virtual class game &game() = 0;
 

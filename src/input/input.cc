@@ -122,84 +122,110 @@ private:
     uint16_t m_idx : 15;
 };
 
-struct {
-    std::vector<input_def> inputs;
+class manager_impl final : public manager {
+public:
+    axis create_axis(std::string_view name) override;
+    button create_button(std::string_view name) override;
+
+    void mouse_assign(axis x, axis y) override;
+    float &mouse_sensitivity() override;
+
+    void keyboard_assign(button, SDL_Scancode) override;
+    void keyboard_assign(axis, SDL_Scancode, SDL_Scancode) override;
+
+    void reset_deltas() override;
+    void handle_event(SDL_Event &event) override;
+
+    iterator begin() override { return { *this, 0 }; }
+    iterator end() override { return { *this, static_cast<uint16_t>(m_inputs.size()) }; }
+
+private:
+    uint16_t find_or_new(std::string_view name, bool is_axis);
+
+    std::vector<input_def> m_inputs;
 
     struct {
         input_ref x = {};
         input_ref y = {};
 
         float sensitivity = 1.f;
-    } mouse;
+    } m_mouse;
 
-    std::array<input_ref, SDL_NUM_SCANCODES> keyboard;
-} g_self;
+    std::array<input_ref, SDL_NUM_SCANCODES> m_keyboard;
 
-uint16_t find_or_new(std::string_view name, bool is_axis)
-{
-    input_def *inputs = g_self.inputs.data();
-    size_t inputs_size = g_self.inputs.size();
+    friend class axis;
+    friend class button;
+    friend class iterator;
+};
+
+std::unique_ptr<manager> manager::create(application &) {
+    return std::make_unique<manager_impl>();
+}
+
+uint16_t manager_impl::find_or_new(std::string_view name, bool is_axis) {
+    input_def *inputs = m_inputs.data();
+    size_t inputs_size = m_inputs.size();
     for (size_t i = 0; i < inputs_size; i++) {
         if (inputs[i].name == name)
             return i;
     }
 
     assert(inputs_size <= input_ref::MAX_INPUTS);
-    g_self.inputs.emplace_back(name, is_axis);
+    m_inputs.emplace_back(name, is_axis);
     return inputs_size;
 }
 
-axis::axis(std::string_view name)
-: idx(find_or_new(name, true))
-{}
+axis manager_impl::create_axis(std::string_view name) {
+    return { *this, find_or_new(name, true) };
+}
+
+button manager_impl::create_button(std::string_view name) {
+    return { *this, find_or_new(name, false) };
+}
 
 float axis::value() const
 {
-    return g_self.inputs[idx].get_axis();
+    return m_manager->m_inputs[m_idx].get_axis();
 }
-
-button::button(std::string_view name)
-: idx(find_or_new(name, false))
-{}
 
 bool button::pressed() const
 {
-    return g_self.inputs[idx].get_button_pressed();
+    return m_manager->m_inputs[m_idx].get_button_pressed();
 }
 
 bool button::down() const
 {
-    return g_self.inputs[idx].get_button_down();
+    return m_manager->m_inputs[m_idx].get_button_down();
 }
 
 bool button::up() const
 {
-    return g_self.inputs[idx].get_button_up();
+    return m_manager->m_inputs[m_idx].get_button_up();
 }
 
-void mouse::assign(axis x, axis y)
+void manager_impl::mouse_assign(axis x, axis y)
 {
-    g_self.mouse.x = { x.idx };
-    g_self.mouse.y = { y.idx };
+    m_mouse.x = { x.m_idx };
+    m_mouse.y = { y.m_idx };
 }
 
-float &mouse::sensitivity()
+float &manager_impl::mouse_sensitivity()
 {
-    return g_self.mouse.sensitivity;
+    return m_mouse.sensitivity;
 }
 
-void keyboard::assign(button b, SDL_Scancode key)
+void manager_impl::keyboard_assign(button b, SDL_Scancode key)
 {
     assert(key < SDL_NUM_SCANCODES);
-    g_self.keyboard[key] = { b.idx };
+    m_keyboard[key] = { b.m_idx };
 }
 
-void keyboard::assign(axis axis, SDL_Scancode pos, SDL_Scancode neg)
+void manager_impl::keyboard_assign(axis axis, SDL_Scancode pos, SDL_Scancode neg)
 {
     assert(pos < SDL_NUM_SCANCODES);
     assert(neg < SDL_NUM_SCANCODES);
-    g_self.keyboard[pos] = { axis.idx, false };
-    g_self.keyboard[neg] = { axis.idx, true  };
+    m_keyboard[pos] = { axis.m_idx, false };
+    m_keyboard[neg] = { axis.m_idx, true  };
 }
 
 input_data::input_data(const input_def &data)
@@ -215,42 +241,31 @@ input_data::input_data(const input_def &data)
     }
 }
 
-input_data iterator::operator*()
-{
-    return { g_self.inputs[m_current] };
+input_data iterator::operator*() {
+    return { m_manager.m_inputs[m_current] };
 }
 
-iterator iterable::begin()
+void manager_impl::reset_deltas()
 {
-    return { 0 };
-}
-
-iterator iterable::end()
-{
-    return { static_cast<uint16_t>(g_self.inputs.size()) };
-}
-
-void manager::reset_deltas()
-{
-    if (input_ref x = g_self.mouse.x; x.valid()) {
+    if (input_ref x = m_mouse.x; x.valid()) {
         assert(!x.direction());
-        g_self.inputs[x.idx()].set_axis(0.f);
+        m_inputs[x.idx()].set_axis(0.f);
     }
-    if (input_ref y = g_self.mouse.y; y.valid()) {
+    if (input_ref y = m_mouse.y; y.valid()) {
         assert(!y.direction());
-        g_self.inputs[y.idx()].set_axis(0.f);
+        m_inputs[y.idx()].set_axis(0.f);
     }
 }
 
-void manager::handle_event(SDL_Event &event)
+void manager_impl::handle_event(SDL_Event &event)
 {
     switch (event.type) {
     case SDL_MOUSEMOTION:
-        if (input_ref x = g_self.mouse.x; x.valid()) {
-            g_self.inputs[x.idx()].add_axis(g_self.mouse.sensitivity * event.motion.xrel);
+        if (input_ref x = m_mouse.x; x.valid()) {
+            m_inputs[x.idx()].add_axis(m_mouse.sensitivity * event.motion.xrel);
         }
-        if (input_ref y = g_self.mouse.y; y.valid()) {
-            g_self.inputs[y.idx()].add_axis(g_self.mouse.sensitivity * -event.motion.yrel);
+        if (input_ref y = m_mouse.y; y.valid()) {
+            m_inputs[y.idx()].add_axis(m_mouse.sensitivity * -event.motion.yrel);
         }
         break;
     case SDL_KEYDOWN:
@@ -258,8 +273,8 @@ void manager::handle_event(SDL_Event &event)
         assert(event.key.keysym.scancode < SDL_NUM_SCANCODES);
         if (!event.key.repeat) {
             bool down = event.type == SDL_KEYDOWN;
-            if (input_ref ref = g_self.keyboard[event.key.keysym.scancode]; ref.valid()) {
-                input_def &input = g_self.inputs[ref.idx()];
+            if (input_ref ref = m_keyboard[event.key.keysym.scancode]; ref.valid()) {
+                input_def &input = m_inputs[ref.idx()];
                 if (input.is_axis()) {
                     bool direction = ref.direction();
                     float value = down ^ direction ? 1.f : -1.f;
@@ -273,16 +288,6 @@ void manager::handle_event(SDL_Event &event)
         break;
     default: break;
     }
-}
-
-uint16_t manager::get_input_count()
-{
-    return g_self.inputs.size();
-}
-
-input_data manager::get_input_data(uint16_t idx)
-{
-    return { g_self.inputs[idx] };
 }
 
 }

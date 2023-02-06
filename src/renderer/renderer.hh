@@ -17,6 +17,8 @@ class renderer {
 public:
     static std::unique_ptr<renderer> create(application &);
 
+    virtual ~renderer() = default;
+
     virtual void start_frame() = 0;
     virtual void end_frame() = 0;
 
