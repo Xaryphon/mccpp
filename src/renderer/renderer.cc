@@ -179,7 +179,9 @@ renderer_impl::renderer_impl(application &app) {
     glCullFace(GL_BACK);
     glFrontFace(GL_CCW);
 
-    cvar::create("r_cull_faces", 1, [](float value) {
+    cvar::manager &cvar_manager = app.cvar_manager();
+
+    cvar_manager.create("r_cull_faces", 1, [](float value) {
         if (value == 0.f) {
             glDisable(GL_CULL_FACE);
         } else if (value == 1.f) {
@@ -197,7 +199,7 @@ renderer_impl::renderer_impl(application &app) {
         return true;
     });
 
-    cvar::create("r_wireframe", 0, [](float value) {
+    cvar_manager.create("r_wireframe", 0, [](float value) {
         if (value == 0.f) {
             glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
         } else if (value == 1.f) {

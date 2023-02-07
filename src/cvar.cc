@@ -4,14 +4,18 @@
 
 #include "logger.hh"
 
-namespace mccpp {
+namespace mccpp::cvar {
 
-cvar &cvar::create(std::string_view name,
+std::unique_ptr<manager> manager::create(application &) {
+    return std::make_unique<manager>();
+}
+
+cvar &manager::create(std::string_view name,
                    float value,
                    std::string_view help,
-                   callback callback)
+                   cvar::callback callback)
 {
-    auto result = s_cvars.emplace(name, help, callback, value);
+    auto result = m_cvars.emplace(name, help, callback, value);
     assert(result.second);
     // this hurts my soul but combined with
     // - operator<=> only comparing m_name
@@ -28,7 +32,5 @@ bool cvar::set_value(float new_value) {
     MCCPP_W("Failed to set cvar {} to {:3f} (from {:3f})", m_name, new_value, m_value);
     return false;
 }
-
-cvar::storage cvar::s_cvars = {};
 
 }

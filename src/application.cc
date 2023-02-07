@@ -6,6 +6,7 @@
 #include <imgui.h>
 #include <imgui_impl_sdl.h>
 
+#include "cvar.hh"
 #include "game.hh"
 #include "input/input.hh"
 #include "logger.hh"
@@ -19,6 +20,11 @@ namespace mccpp {
 
 class application_impl final : public application {
 public:
+    cvar::manager &cvar_manager() override {
+        assert(m_cvar_manager.get());
+        return *m_cvar_manager;
+    };
+
     input::manager &input_manager() override {
         assert(m_input_manager.get());
         return *m_input_manager;
@@ -46,6 +52,7 @@ private:
 
     unsigned m_frame_count;
 
+    std::unique_ptr<cvar::manager> m_cvar_manager;
     std::unique_ptr<input::manager> m_input_manager;
     std::unique_ptr<renderer::renderer> m_renderer;
     std::unique_ptr<class game> m_game;
@@ -128,6 +135,7 @@ int main(int argc, char **argv)
     g_app = &app;
     MCCPP_SCOPE_EXIT { g_app = nullptr; };
 
+    app.m_cvar_manager = cvar::manager::create(app);
     app.m_input_manager = input::manager::create(app);
     app.m_renderer = renderer::renderer::create(app);
     app.m_game = game::create(app);

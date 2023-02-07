@@ -1,45 +1,18 @@
 #pragma once
 
 #include <functional>
+#include <memory>
 #include <set>
 #include <string>
 #include <string_view>
 
-namespace mccpp {
+#include "application.hh"
+
+namespace mccpp::cvar {
 
 class cvar {
 public:
-    using storage = std::set<cvar>;
     using callback = std::function<bool(float&)>;
-
-    struct iterator : storage::iterator {
-        explicit iterator(storage::iterator &&from)
-        : storage::iterator(from)
-        {}
-        cvar &operator*() {
-            return const_cast<cvar &>(storage::iterator::operator*());
-        }
-    };
-
-    static cvar &create(std::string_view name,
-                        float value,
-                        std::string_view help,
-                        callback callback);
-
-    static cvar &create(std::string_view name,
-                        float value,
-                        callback callback)
-    {
-        return create(name, value, "", callback);
-    }
-
-    static iterator begin() { return iterator(s_cvars.begin()); }
-    static iterator end()   { return iterator(s_cvars.end());   }
-
-    struct range {
-        static iterator begin() { return cvar::begin(); }
-        static iterator end()   { return cvar::end();   }
-    };
 
     cvar(std::string_view name, std::string_view help, callback cb, float value)
     : m_name(name)
@@ -67,12 +40,44 @@ public:
     }
 
 private:
-    static storage s_cvars;
-
     const std::string m_name;
     std::string_view m_help;
     callback m_callback;
     float m_value;
+};
+
+class manager {
+public:
+    using storage = std::set<cvar>;
+
+    struct iterator : storage::iterator {
+        explicit iterator(storage::iterator &&from)
+        : storage::iterator(from)
+        {}
+        cvar &operator*() {
+            return const_cast<cvar &>(storage::iterator::operator*());
+        }
+    };
+
+    static std::unique_ptr<manager> create(application &);
+
+    cvar &create(std::string_view name,
+                 float value,
+                 std::string_view help,
+                 cvar::callback callback);
+
+    cvar &create(std::string_view name,
+                 float value,
+                 cvar::callback callback)
+    {
+        return create(name, value, "", callback);
+    }
+
+    iterator begin() { return iterator(m_cvars.begin()); }
+    iterator end()   { return iterator(m_cvars.end());   }
+
+private:
+    storage m_cvars;
 };
 
 }

@@ -20,6 +20,7 @@ public:
     float delta_time() override { return m_frame_time; }
 
 private:
+    cvar::manager &m_cvar_manager;
     input::manager &m_input_manager;
     renderer::renderer &m_renderer;
 
@@ -45,7 +46,8 @@ std::unique_ptr<game> game::create(application &app) {
 }
 
 game_impl::game_impl(application &app)
-: m_input_manager(app.input_manager())
+: m_cvar_manager(app.cvar_manager())
+, m_input_manager(app.input_manager())
 , m_renderer(app.renderer())
 , m_input {
         .look = {
@@ -133,7 +135,7 @@ void game_impl::on_frame() {
     float velocity = glm::length(move_speed);
     ImGui::DragFloat("|Velocity|", &velocity);
 
-    for (cvar &var : cvar::range()) {
+    for (auto &var : m_cvar_manager) {
         float v = var.value();
         if (ImGui::InputFloat(var.name().c_str(), &v,
                 0.f, 0.f, "%.5f",
