@@ -29,15 +29,19 @@ private:
 
     struct {
         struct {
-            input::axis x;
-            input::axis y;
+            input::input_ref xn;
+            input::input_ref xp;
+            input::input_ref yn;
+            input::input_ref yp;
         } look;
         struct {
-            input::axis x;
-            input::axis y;
+            input::input_ref xn;
+            input::input_ref xp;
+            input::input_ref yn;
+            input::input_ref yp;
         } move;
-        input::button jump;
-        input::button sneak;
+        input::input_ref jump;
+        input::input_ref sneak;
     } m_input;
 };
 
@@ -51,22 +55,29 @@ game_impl::game_impl(application &app)
 , m_renderer(app.renderer())
 , m_input {
         .look = {
-            .x = m_input_manager.create_axis("look.x"),
-            .y = m_input_manager.create_axis("look.y"),
+            .xn = m_input_manager.get("look.x-"),
+            .xp = m_input_manager.get("look.x+"),
+            .yn = m_input_manager.get("look.y-"),
+            .yp = m_input_manager.get("look.y+"),
         },
         .move = {
-            .x = m_input_manager.create_axis("move.x"),
-            .y = m_input_manager.create_axis("move.y"),
+            .xn = m_input_manager.get("move.x-"),
+            .xp = m_input_manager.get("move.x+"),
+            .yn = m_input_manager.get("move.y-"),
+            .yp = m_input_manager.get("move.y+"),
         },
-        .jump = m_input_manager.create_button("jump"),
-        .sneak = m_input_manager.create_button("sneak"),
+        .jump = m_input_manager.get("jump"),
+        .sneak = m_input_manager.get("sneak"),
     }
 {
-    m_input_manager.mouse_assign(m_input.look.x, m_input.look.y);
-    m_input_manager.keyboard_assign(m_input.move.x, SDL_SCANCODE_D, SDL_SCANCODE_A);
-    m_input_manager.keyboard_assign(m_input.move.y, SDL_SCANCODE_S, SDL_SCANCODE_W);
-    m_input_manager.keyboard_assign(m_input.jump, SDL_SCANCODE_SPACE);
-    m_input_manager.keyboard_assign(m_input.sneak, SDL_SCANCODE_LSHIFT);
+    m_input_manager.bind_mouse_x(m_input.look.xn, m_input.look.xp);
+    m_input_manager.bind_mouse_y(m_input.look.yn, m_input.look.yp);
+    m_input_manager.bind_keyboard(SDL_SCANCODE_A, m_input.move.xn);
+    m_input_manager.bind_keyboard(SDL_SCANCODE_D, m_input.move.xp);
+    m_input_manager.bind_keyboard(SDL_SCANCODE_W, m_input.move.yn);
+    m_input_manager.bind_keyboard(SDL_SCANCODE_S, m_input.move.yp);
+    m_input_manager.bind_keyboard(SDL_SCANCODE_SPACE, m_input.jump);
+    m_input_manager.bind_keyboard(SDL_SCANCODE_LSHIFT, m_input.sneak);
 
     m_frame_last = std::chrono::steady_clock::now();
 }
@@ -78,8 +89,8 @@ void game_impl::on_frame() {
     glm::vec3 &camera_position = m_renderer.camera().position;
     glm::vec3 &look = m_renderer.camera().rotation;
 
-    look.x += MOUSE_SENSITIVITY * m_input.look.x * m_frame_time;
-    look.y += MOUSE_SENSITIVITY * m_input.look.y * m_frame_time;
+    look.x += MOUSE_SENSITIVITY * (m_input.look.xp->raw() - m_input.look.xn->raw()) * m_frame_time;
+    look.y += MOUSE_SENSITIVITY * (m_input.look.yp->raw() - m_input.look.yn->raw()) * m_frame_time;
 
     look.x = glm::mod(look.x, 2.0f * glm::pi<float>());
     if (look.y >  0.5f * glm::pi<float>())
@@ -87,9 +98,14 @@ void game_impl::on_frame() {
     if (look.y < -0.5f * glm::pi<float>())
         look.y = -0.5f * glm::pi<float>();
 
+    glm::vec2 move_input {
+        m_input.move.xp->value() - m_input.move.xn->value(),
+        m_input.move.yp->value() - m_input.move.yn->value(),
+    };
+
     glm::vec2 move {
-        m_input.move.y * cos(-look.x) + m_input.move.x * sin(look.x),
-        m_input.move.y * sin(-look.x) + m_input.move.x * cos(look.x),
+        move_input.y * cos(-look.x) + move_input.x * sin(look.x),
+        move_input.y * sin(-look.x) + move_input.x * cos(look.x),
     };
 
     if (glm::dot(move, move) > 1) {
@@ -99,9 +115,9 @@ void game_impl::on_frame() {
     camera_position.x += MOVE_SPEED * move.y * m_frame_time;
     camera_position.z += MOVE_SPEED * move.x * m_frame_time;
     float fly = 0.f;
-    if (m_input.jump)
+    if (m_input.jump->pressed())
         fly += 1.f;
-    if (m_input.sneak)
+    if (m_input.sneak->pressed())
         fly -= 1.f;
     camera_position.y += MOVE_SPEED * fly * m_frame_time;
 
@@ -113,8 +129,13 @@ void game_impl::on_frame() {
             ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoBringToFrontOnFocus))
     {
         ImGui::Text("%.0f fps %.3f ms", 1 / m_frame_time, m_frame_time * 1000.f);
-        for (input::input_data input : m_input_manager) {
-            ImGui::Text("%08" PRIx32 " %08" PRIx32 " %.*s", input.raw[0], input.raw[1], (int)input.name.length(), input.name.data());
+
+        ImGui::Text("move : %f, %f", move.x, move.y);
+        ImGui::Text("move_input : %f, %f", move_input.x, move_input.y);
+        ImGui::NewLine();
+
+        for (auto &[name, input] : m_input_manager) {
+            ImGui::Text("%.*s : %f", static_cast<int>(name.size()), name.data(), input.raw());
         }
     }
     ImGui::End();

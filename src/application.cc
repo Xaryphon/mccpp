@@ -140,15 +140,16 @@ int main(int argc, char **argv)
     app.m_renderer = renderer::renderer::create(app);
     app.m_game = game::create(app);
 
-    input::button unlock_cursor = app.m_input_manager->create_button("unlock_cursor");
-    app.m_input_manager->keyboard_assign(unlock_cursor, SDL_SCANCODE_LALT);
+    input::input_ref unlock_cursor = app.m_input_manager->get("unlock_cursor");
+    app.m_input_manager->bind_keyboard(SDL_SCANCODE_LALT, unlock_cursor);
     app.capture_mouse(false);
 
     while (!app.should_exit()) {
-        app.m_input_manager->reset_deltas();
+        app.m_input_manager->pre_events();
         poll_events(app);
+        app.m_input_manager->post_events();
 
-        if (unlock_cursor.down()) {
+        if (unlock_cursor->down()) {
             app.capture_mouse(!app.capture_mouse());
         }
 

@@ -3,6 +3,7 @@
 #include <cstdint>
 #include <memory>
 #include <string_view>
+#include <map>
 
 #include <SDL.h>
 
@@ -10,87 +11,36 @@
 
 namespace mccpp::input {
 
-class manager;
-class manager_impl;
-
-class axis {
+class input {
 public:
-    float value() const;
+    //std::string_view name() { return m_name; }
 
-    operator float() const { return value(); }
+    float raw() { return m_raw; }
+    float raw_old() { return m_old; }
+    float raw_delta() { return raw() - raw_old(); }
+
+    float value() { return clamp(raw(), -1.f, 1.f); }
+    float old() { return clamp(raw(), -1.f, 1.f); }
+    float delta() { return value() - old(); }
+
+    bool pressed() { return raw() >= 0.5f; }
+    bool was_pressed() { return raw_old() >= 0.5f; }
+    bool down() { return !was_pressed() && pressed(); }
+    bool up() { return was_pressed() && !pressed(); }
 
 private:
-    axis(manager_impl &mgr, uint16_t idx)
-    : m_manager(&mgr)
-    , m_idx(idx)
-    {}
+    inline static float clamp(float value, float min, float max) {
+        return value < min ? min : value > max ? max : value;
+    }
 
-    manager_impl *m_manager;
-    uint16_t m_idx;
+    //std::string m_name;
+    float m_raw = 0.f;
+    float m_old = 0.f;
 
     friend class manager_impl;
 };
 
-class button {
-public:
-    bool pressed() const;
-    bool down() const;
-    bool up() const;
-
-    operator bool() const { return pressed(); }
-
-private:
-    button(manager_impl &mgr, uint16_t idx)
-    : m_manager(&mgr)
-    , m_idx(idx)
-    {}
-
-    manager_impl *m_manager;
-    uint16_t m_idx;
-
-    friend class manager_impl;
-};
-
-struct input_data {
-    input_data(const struct input_def &);
-
-    std::string_view name;
-    uint32_t raw[2];
-
-    bool is_axis;
-    union {
-        float axis;
-        struct {
-            bool pressed;
-            bool changed;
-        } button;
-    } value;
-};
-
-class iterator {
-public:
-    iterator(manager_impl &mgr, uint16_t value)
-    : m_manager(mgr)
-    , m_current(value)
-    {}
-
-    iterator &operator++()
-    {
-        ++m_current;
-        return *this;
-    }
-
-    bool operator!=(const iterator &other)
-    {
-        return m_current != other.m_current;
-    }
-
-    input_data operator*();
-
-private:
-    manager_impl &m_manager;
-    uint16_t m_current;
-};
+using input_ref = input *;
 
 class manager {
 public:
@@ -98,18 +48,17 @@ public:
 
     virtual ~manager() = default;
 
-    virtual axis create_axis(std::string_view name) = 0;
-    virtual button create_button(std::string_view name) = 0;
+    virtual input_ref get(std::string_view) = 0;
+    virtual void pre_events() = 0;
+    virtual void handle_event(SDL_Event &) = 0;
+    virtual void post_events() = 0;
 
-    virtual void mouse_assign(axis x, axis y) = 0;
-    virtual float &mouse_sensitivity() = 0;
+    virtual void bind_mouse_x(input_ref neg, input_ref pos) = 0;
+    virtual void bind_mouse_y(input_ref neg, input_ref pos) = 0;
+    virtual void bind_mouse_button(uint8_t, input_ref) = 0;
+    virtual void bind_keyboard(SDL_Scancode, input_ref) = 0;
 
-    virtual void keyboard_assign(button, SDL_Scancode) = 0;
-    virtual void keyboard_assign(axis, SDL_Scancode, SDL_Scancode) = 0;
-
-    virtual void reset_deltas() = 0;
-    virtual void handle_event(SDL_Event &event) = 0;
-
+    using iterator = std::map<std::string_view, input>::iterator;
     virtual iterator begin() = 0;
     virtual iterator end() = 0;
 };
