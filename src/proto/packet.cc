@@ -53,6 +53,14 @@ void packet_writer::write_string(std::string_view value, size_t max_code_points)
     write_as_bytes(std::span<const char>(value.data(), value.size()), false);
 }
 
+void packet_reader::discard(size_t n) {
+    assert(m_remaining >= n);
+    m_remaining -= n;
+    while (n-- > 0) {
+        m_read_byte();
+    }
+}
+
 std::byte packet_reader::read_byte() {
     assert(m_remaining > 0);
     m_remaining--;

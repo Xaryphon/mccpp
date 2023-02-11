@@ -54,6 +54,7 @@ public:
     {}
 
     size_t remaining() { return m_remaining; }
+    void discard(size_t);
 
     std::byte read_byte();
     int32_t read_varint();
@@ -77,11 +78,5 @@ private:
 
 template<typename TPacket>
 struct packet;
-
-class packet_handler {
-public:
-    virtual void read(packet_reader &) = 0;
-    virtual void process() = 0;
-};
 
 }

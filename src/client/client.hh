@@ -13,18 +13,22 @@ class client : public proto::client {
 
 public:
     client(asio::ip::tcp::socket &&socket)
-    : proto::client(std::move(socket), [this](int32_t id) { return create_handler(id); })
+    : proto::client(std::move(socket))
     , m_state(connection_state::HANDSHAKING)
     {}
-
-    // NOTE: implemented in handler.cc
-    std::unique_ptr<proto::packet_handler> create_handler(int32_t packet_id);
 
     void set_state(proto::generated::connection_state new_state) {
         m_state = new_state;
     }
 
 private:
+    // NOTE: implemented in handlers.cc
+    void on_packet_received(int32_t, proto::packet_reader &) override final;
+
+    // NOTE: implemented in handlers.cc and handlers/**/*.cc
+    template<class PacketInfo>
+    void handle_packet(proto::packet_reader &);
+
     connection_state m_state;
 
     template<typename T>

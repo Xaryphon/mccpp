@@ -5,8 +5,8 @@
 namespace mccpp::client {
 
 template<>
-void packet_handler<proto::generated::clientbound::status::pong_response_packet>::process() {
-    MCCPP_I("pong response: 0x{:016x}", packet().payload);
+void client::handle_packet<status::pong_response_packet>(proto::packet_reader &s) {
+    MCCPP_I("pong response: 0x{:016x}", s.read_i64());
 }
 
 }

@@ -1,4 +1,4 @@
-#include "handler.hh"
+#include "handlers.hh"
 
 #include "../logger.hh"
 #include "../proto/exceptions.hh"
@@ -8,32 +8,23 @@
 #include "client.hh"
 #include "handlers.hh"
 
-// FIXME: This feels really hacky :/
-template<typename TPacket>
-struct mccpp::proto::packet {
-    void read(proto::packet_reader &s) {
-        while (s.remaining() > 0) {
-            s.read_byte();
-        }
-    }
-};
-
 namespace mccpp::client {
 
-template<typename T>
-void packet_handler<T>::process() {
+template<class PacketInfo>
+void client::handle_packet(proto::packet_reader &s) {
     using namespace proto::generated;
-    MCCPP_T("ignoring an unimplemented packet {}", packet_traits<T>::name);
+    MCCPP_T("ignoring an unimplemented packet {}", packet_traits<PacketInfo>::name);
+    s.discard(s.remaining());
 }
 
-std::unique_ptr<proto::packet_handler> client::create_handler(int32_t packet_id) {
+void client::on_packet_received(int32_t packet_id, proto::packet_reader &reader) {
     using namespace proto::generated;
     switch (m_state) {
 #define _MCCPP_ITER_STATE_START(state)  \
     case connection_state::state: \
         switch (packet_id) {
 #define _MCCPP_ITER_PACKET(type) \
-            case type::id: return std::make_unique<packet_handler<type>>(*this);
+            case type::id: return handle_packet<type>(reader);
 #define _MCCPP_ITER_STATE_END(state) \
         } \
         break;

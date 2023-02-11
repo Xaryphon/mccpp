@@ -1,13 +1,13 @@
 #pragma once
 
-#include "handler.hh"
-#include "../proto/clientbound/packets.hh"
+#include "client.hh"
+#include "../proto/generated/clientbound/types.hh"
 
 namespace mccpp::client {
 
 using namespace proto::generated::clientbound;
 
-template<> void packet_handler<status::pong_response_packet>::process();
-template<> void packet_handler<status::status_response_packet>::process();
+template<> void client::handle_packet<status::pong_response_packet>(proto::packet_reader &);
+template<> void client::handle_packet<status::status_response_packet>(proto::packet_reader &);
 
 }

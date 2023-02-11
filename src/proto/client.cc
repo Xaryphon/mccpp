@@ -71,12 +71,10 @@ task<> client::receiver_task() {
         }, size_t(packet_length) };
 
         int32_t packet_id = reader.read_varint();
-        std::unique_ptr<packet_handler> handler = m_create_handler(packet_id);
-        handler->read(reader);
+        on_packet_received(packet_id, reader);
         if (reader.remaining() != 0) {
             throw decode_error("trailing data in packet");
         }
-        handler->process();
     }
 }
 

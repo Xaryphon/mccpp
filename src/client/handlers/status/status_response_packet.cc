@@ -5,8 +5,8 @@
 namespace mccpp::client {
 
 template<>
-void packet_handler<proto::generated::clientbound::status::status_response_packet>::process() {
-    MCCPP_I("server status json: {}", packet().json_response);
+void client::handle_packet<status::status_response_packet>(proto::packet_reader &s) {
+    MCCPP_I("server status json: {}", s.read_string<32767>());
 }
 
 }
