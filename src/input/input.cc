@@ -32,7 +32,7 @@ public:
 private:
     std::map<std::string_view, input> m_inputs;
 
-    bool m_moved_mouse;
+    bool m_moved_mouse = false;
     float m_mouse_x_accumulation = 0.f;
     float m_mouse_y_accumulation = 0.f;
     input_ref m_mouse_x_n = {};
