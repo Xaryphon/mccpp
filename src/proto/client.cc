@@ -6,6 +6,20 @@
 
 namespace mccpp::proto {
 
+void client::connect(asio::io_context &io, std::string_view address, uint16_t port) {
+    tcp_client::connect(io, asio::ip::tcp::endpoint { asio::ip::make_address(address), port });
+}
+
+void client::on_tcp_error(asio::error_code error) {
+    MCCPP_E("TCP connect failed: {}", error.message());
+}
+
+void client::on_tcp_connect() {
+    MCCPP_I("TCP connect success");
+    m_receive_task.handle().resume();
+    on_connect();
+}
+
 void client::write_varint(int32_t value) {
     varint::write(value, [this](std::byte byte) { write_byte(byte); });
 }

@@ -32,9 +32,7 @@ public:
         friend class tcp_client;
     };
 
-    tcp_client(tcp::socket &&socket)
-    : m_socket(std::move(socket))
-    {}
+    void connect(asio::io_context &, tcp::endpoint);
 
     std::span<const std::byte> peek_all() { return { m_read_buffer.m_buffer.data(), m_read_buffer.m_available }; }
     std::byte read_byte() { return m_read_buffer.pop_front(); }
@@ -46,6 +44,8 @@ public:
     void write_flush();
 
 protected:
+    virtual void on_tcp_error(asio::error_code) = 0;
+    virtual void on_tcp_connect() = 0;
     virtual void on_readable() = 0;
 
 private:
@@ -73,7 +73,7 @@ private:
         friend class tcp_client;
     } m_read_buffer = { *this };
 
-    tcp::socket m_socket;
+    std::optional<tcp::socket> m_socket;
     std::vector<std::byte> m_write_buffer;
 };
 

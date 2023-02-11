@@ -4,6 +4,13 @@
 
 namespace mccpp::proto {
 
+void tcp_client::connect(asio::io_context &io, tcp::endpoint endpoint) {
+    m_socket.emplace(io);
+    // TODO: Make async
+    m_socket->connect(endpoint);
+    on_tcp_connect();
+}
+
 task<> tcp_client::async_recv_until(size_t n) {
     assert(n <= m_read_buffer.capacity());
 
@@ -29,7 +36,7 @@ void tcp_client::write_bytes(std::span<const std::byte> bytes) {
 void tcp_client::write_flush() {
     // FIXME: Flush write buffer asynchronously
     for (size_t offset = 0; offset < m_write_buffer.size();) {
-        offset += m_socket.write_some(asio::buffer(m_write_buffer.data() + offset, m_write_buffer.size() - offset));
+        offset += m_socket->write_some(asio::buffer(m_write_buffer.data() + offset, m_write_buffer.size() - offset));
     }
     m_write_buffer.clear();
 }
@@ -37,7 +44,7 @@ void tcp_client::write_flush() {
 void tcp_client::buffer::resume_on_readable(std::coroutine_handle<> h) {
     assert(!m_resume);
     m_resume = h;
-    m_client.m_socket.async_read_some(write_region(),
+    m_client.m_socket->async_read_some(write_region(),
         [this](const asio::error_code& error, std::size_t bytes_read)
     {
         if (error == asio::error::eof) {

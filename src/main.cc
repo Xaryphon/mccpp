@@ -66,24 +66,13 @@ int main(int argc, char **argv) {
 
     asio::io_context io;
 
-    using asio::ip::tcp;
-    tcp::socket socket { io };
-    socket.connect(tcp::endpoint { asio::ip::make_address("127.0.0.1"), 25564 });
+    client::client client {};
+    client.connect(io, "127.0.0.1", 25564);
 
-    client::client client { std::move(socket) };
-    using namespace mccpp::proto;
     using namespace mccpp::proto::generated;
 
-    client.queue_send(packet<serverbound::handshaking::client_intention_packet> {
-        .protocol_version = 761,
-        .server_address = "127.0.0.1",
-        .server_port = 25564,
-        .next_state = packet<serverbound::handshaking::client_intention_packet>::STATUS,
-    });
-    client.set_state(connection_state::STATUS);
-
-    client.queue_send(packet<serverbound::status::status_request_packet> {});
-    client.queue_send(packet<serverbound::status::ping_request_packet> {
+    client.queue_send<serverbound::status::status_request_packet>({});
+    client.queue_send<serverbound::status::ping_request_packet>({
         .payload = 0x012345678,
     });
 
