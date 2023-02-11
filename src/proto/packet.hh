@@ -10,6 +10,7 @@
 #include <vector>
 
 #include "../utility/coro.hh"
+#include "../uuid.hh"
 
 namespace mccpp::proto {
 
@@ -19,8 +20,15 @@ public:
 
     void write_varint(int32_t);
     void write_bytes(std::span<const std::byte>);
+    void write_bool(bool);
     void write_u16(uint16_t);
+    void write_u64(uint64_t);
     void write_i64(int64_t);
+
+    void write_uuid(uuid uuid) {
+        write_u64(uuid.high());
+        write_u64(uuid.low());
+    }
 
     template<size_t MaxCodePoints>
     void write_string(std::string_view str) {
@@ -58,7 +66,15 @@ public:
 
     std::byte read_byte();
     int32_t read_varint();
+    bool read_bool();
+    int64_t read_u64();
     int64_t read_i64();
+
+    uuid read_uuid() {
+        uint64_t high = read_u64();
+        uint64_t low = read_u64();
+        return { high, low };
+    }
 
     template<size_t MaxCodePoints>
     std::string read_string() {

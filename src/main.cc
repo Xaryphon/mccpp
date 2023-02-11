@@ -68,14 +68,6 @@ int main(int argc, char **argv) {
 
     client::client client {};
     client.connect(io, "127.0.0.1", 25564);
-
-    using namespace mccpp::proto::generated;
-
-    client.queue_send<serverbound::status::status_request_packet>({});
-    client.queue_send<serverbound::status::ping_request_packet>({
-        .payload = 0x012345678,
-    });
-
     io.run();
 
     (void)argc;

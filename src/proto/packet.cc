@@ -16,8 +16,16 @@ void packet_writer::write_bytes(std::span<const std::byte> data) {
     write_bytes(data, false);
 }
 
+void packet_writer::write_bool(bool value) {
+    m_buffer.emplace_back(value ? std::byte(0x01) : std::byte(0x00));
+}
+
 void packet_writer::write_u16(uint16_t value) {
     write_as_bytes(std::span<uint16_t>(&value, 1), true);
+}
+
+void packet_writer::write_u64(uint64_t value) {
+    write_as_bytes(std::span<uint64_t>(&value, 1), true);
 }
 
 void packet_writer::write_i64(int64_t value) {
@@ -69,6 +77,21 @@ std::byte packet_reader::read_byte() {
 
 int32_t packet_reader::read_varint() {
     return varint::read([this] { return read_byte(); });
+}
+
+bool packet_reader::read_bool() {
+    std::byte b = read_byte();
+    if (b == std::byte(0x00)) {
+        return false;
+    } else if (b == std::byte(0x01)) {
+        return true;
+    } else {
+        throw decode_error("invalid boolean");
+    }
+}
+
+int64_t packet_reader::read_u64() {
+    return read_int_n<uint64_t>();
 }
 
 int64_t packet_reader::read_i64() {

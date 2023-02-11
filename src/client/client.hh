@@ -14,10 +14,6 @@ class client final : public proto::client {
 public:
     void connect(asio::io_context &, std::string_view address, uint16_t port);
 
-    void set_state(proto::generated::connection_state new_state) {
-        m_state = new_state;
-    }
-
 private:
     void on_error() override final;
     void on_connect() override final;

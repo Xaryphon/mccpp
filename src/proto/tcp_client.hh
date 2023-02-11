@@ -67,7 +67,7 @@ private:
     private:
         tcp_client &m_client;
 
-        std::array<std::byte, 1024> m_buffer;
+        std::array<std::byte, 2097151> m_buffer;
         size_t m_available = 0;
         std::coroutine_handle<> m_resume = nullptr;
         friend class tcp_client;

@@ -78,7 +78,7 @@ task<> client::receiver_task() {
 
         MCCPP_T("Receiving a packet of length {}", packet_length);
         co_await async_recv_until(packet_length);
-        MCCPP_T("Received packet of length {}:\n{:c}", packet_length, peek_all().subspan(0, packet_length));
+        //MCCPP_T("Received packet of length {}:\n{:c}", packet_length, peek_all().subspan(0, packet_length));
 
         packet_reader reader { [this] {
             return read_byte();
