@@ -27,5 +27,5 @@ endforeach()
 file(APPEND "${packet_handlers_file}" "\n}\n")
 
 execute_process(
-    COMMAND cmake -E copy_if_different "${packet_handlers_file}" handlers.hh
+    COMMAND cmake -E copy_if_different "${packet_handlers_file}" "${CMAKE_CURRENT_SOURCE_DIR}/handlers.hh"
 )
