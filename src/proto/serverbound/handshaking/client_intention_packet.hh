@@ -9,6 +9,7 @@
 
 namespace mccpp::proto {
 
+// https://wiki.vg/index.php?title=Protocol&oldid=17979#Handshake
 template<>
 struct packet<generated::serverbound::handshaking::client_intention_packet> {
     using packet_type = generated::serverbound::handshaking::client_intention_packet;
