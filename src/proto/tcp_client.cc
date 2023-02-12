@@ -53,7 +53,6 @@ void tcp_client::buffer::resume_on_readable(std::coroutine_handle<> h) {
     m_client.m_socket->async_read_some(std::array {front, back},
         [this](const asio::error_code& error, std::size_t bytes_read)
     {
-        MCCPP_D("Received {} bytes", bytes_read);
         if (error == asio::error::eof) {
             MCCPP_D("EOF");
             // FIXME: throw eof

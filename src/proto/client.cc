@@ -30,8 +30,6 @@ void client::queue_send(std::span<const std::byte> body) {
         throw encode_error("Packet length exceeded");
     }
 
-    MCCPP_T("Sending packet of length {}:\n{:c}", body.size(), body);
-
     int32_t packet_length = body.size();
     write_varint(packet_length);
     write_bytes(body);
