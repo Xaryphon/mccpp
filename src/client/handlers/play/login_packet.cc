@@ -5,8 +5,6 @@
 #include "../../../utility/format.hh"
 #include "../../../nbt.hh"
 
-#include <fstream>
-
 namespace mccpp::client {
 
 // https://wiki.vg/index.php?title=Protocol&oldid=17979#Login_.28play.29
