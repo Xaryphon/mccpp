@@ -9,6 +9,8 @@ set(packet_handlers
     login/game_profile_packet
     login/hello_packet
     login/login_compression_packet
+    play/custom_payload_packet
+    play/keep_alive_packet
     play/login_packet
     status/pong_response_packet
     status/status_response_packet

@@ -7,6 +7,15 @@
 
 namespace mccpp::client {
 
+static std::vector<std::byte> string_to_bytes(std::string_view str) {
+    std::vector<std::byte> vec {};
+    vec.reserve(str.size());
+    for (size_t i = 0; i < str.size(); i++) {
+        vec.emplace_back(std::byte(str[i]));
+    }
+    return vec;
+}
+
 // https://wiki.vg/index.php?title=Protocol&oldid=17979#Login_.28play.29
 template<>
 void client::handle_packet<proto::generated::clientbound::play::login_packet>(proto::packet_reader &s) {
@@ -47,6 +56,22 @@ void client::handle_packet<proto::generated::clientbound::play::login_packet>(pr
     if (has_death_location) {
         MCCPP_D("Death Location: {} {} {} {}", death_dimension_name, death_location.x(), death_location.y(), death_location.z());
     }
+
+    queue_send<serverbound::play::custom_payload_packet>({
+        .channel = "minecraft:brand",
+        .data = string_to_bytes("mccpp"),
+    });
+
+    queue_send<serverbound::play::client_information_packet>({
+        .locale = "en_US",
+        .view_distance = 10,
+        .chat_mode = 2,
+        .chat_colors = false,
+        .displayed_skin_parts = 0x00,
+        .main_hand = 1,
+        .enable_text_filtering = false,
+        .allow_server_listings = false,
+    });
 }
 
 }

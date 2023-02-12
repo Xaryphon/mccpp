@@ -28,8 +28,8 @@ int main(int argc, char **argv) {
 
     asio::io_context io;
 
-    client::client client {};
-    client.connect(io, "127.0.0.1", 25564);
+    auto client = std::make_unique<client::client>();
+    client->connect(io, "127.0.0.1", 25564);
     io.run();
 
     (void)argc;
