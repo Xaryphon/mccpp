@@ -16,20 +16,49 @@ namespace mccpp::proto {
 
 struct position {
 public:
-    position() : m_data(0) {}
-    position(uint64_t raw) : m_data(raw) {}
-    position(int64_t x, int64_t z) : position(x, 0, z) {}
-    position(int64_t x, int64_t y, int64_t z)
-    : m_data(((x & 0x3ffffff) << 38) | ((z & 0x3ffffff) << 12) | (y & 0xfff))
+    position() : m_x(0), m_z(0), m_y(0) {}
+
+    position(uint64_t raw)
+    : m_x(sign_extend<26>(raw >> 38 & 0x3ffffff))
+    , m_z(sign_extend<26>(raw >> 12 & 0x3ffffff))
+    , m_y(sign_extend<12>(raw & 0xfff))
     {}
 
-    uint64_t raw() { return m_data; }
-    int64_t x() { return m_data >> 38 & 0x3ffffff; }
-    int64_t z() { return m_data >> 12 & 0x3ffffff; }
-    int64_t y() { return m_data       & 0xfff;     }
+    position(int32_t x, int32_t z) : position(x, 0, z) {}
+    position(int32_t x, int32_t y, int32_t z) : m_x(x), m_z(z), m_y(y) {}
+
+    uint64_t raw() {
+        return ((int64_t(m_x) & 0x3ffffff) << 38)
+             | ((int64_t(m_z) & 0x3ffffff) << 12)
+             | ((int64_t(m_y) & 0xfff));
+    }
+
+    int32_t x() { return m_x; }
+    int32_t z() { return m_z; }
+    int32_t y() { return m_y; }
 
 private:
-    uint64_t m_data;
+    // Yoink'd from https://stackoverflow.com/questions/58904102/how-to-safely-extract-a-signed-field-from-a-uint32-t-into-a-signed-number-int-o
+    template <uint32_t N>
+    int32_t sign_extend(uint32_t value) {
+        static_assert(N > 0 && N <= 32);
+        constexpr uint32_t unusedBits = (uint32_t(32) - N);
+        if constexpr (int32_t(0xFFFFFFFFu) >> 1 == int32_t(0xFFFFFFFFu)) {
+            return int32_t(value << unusedBits) >> int32_t(unusedBits);
+        } else {
+            constexpr uint32_t mask = uint32_t(0xFFFFFFFFu) >> unusedBits;
+            value &= mask;
+            if (value & (uint32_t(1) << (N-1))) {
+                value |= ~mask;
+            }
+            return int32_t(value);
+        }
+    }
+
+
+    int32_t m_x;
+    int32_t m_z;
+    int32_t m_y;
 };
 
 class packet_writer {
