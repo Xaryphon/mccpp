@@ -25,6 +25,7 @@ void client::handle_packet(proto::packet_reader &s) {
 
 SILENCE_PACKET(add_entity_packet)
 SILENCE_PACKET(entity_event_packet)
+SILENCE_PACKET(level_chunk_with_light_packet)
 SILENCE_PACKET(pos_rot)
 SILENCE_PACKET(pos)
 SILENCE_PACKET(remove_entities_packet)

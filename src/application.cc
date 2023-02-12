@@ -2,10 +2,12 @@
 
 #include <chrono>
 
+#include <asio.hpp>
 #include <SDL.h>
 #include <imgui.h>
 #include <imgui_impl_sdl.h>
 
+#include "client/client.hh"
 #include "cvar.hh"
 #include "game.hh"
 #include "input/input.hh"
@@ -40,6 +42,11 @@ public:
         return *m_game;
     };
 
+    client::client &client() override {
+        assert(m_client.get());
+        return *m_client;
+    };
+
     bool capture_mouse() override { return m_capture_mouse; }
     void capture_mouse(bool) override;
 
@@ -56,6 +63,7 @@ private:
     std::unique_ptr<input::manager> m_input_manager;
     std::unique_ptr<renderer::renderer> m_renderer;
     std::unique_ptr<class game> m_game;
+    std::unique_ptr<client::client> m_client;
 
     friend int main(int argc, char **argv);
     friend unsigned application::frame_count();
@@ -111,8 +119,9 @@ static void poll_events(application_impl &app) {
     }
 }
 
-int main(int argc, char **argv)
-{
+int main(int argc, char **argv) {
+    logger::set_thread_name("main");
+
     (void)argc;
     (void)argv;
 
@@ -131,6 +140,8 @@ int main(int argc, char **argv)
     };
     ImGui::StyleColorsDark();
 
+    asio::io_context io;
+
     application_impl app = {};
     g_app = &app;
     MCCPP_SCOPE_EXIT { g_app = nullptr; };
@@ -139,12 +150,17 @@ int main(int argc, char **argv)
     app.m_input_manager = input::manager::create(app);
     app.m_renderer = renderer::renderer::create(app);
     app.m_game = game::create(app);
+    app.m_client = std::make_unique<client::client>();
+
+    app.m_client->connect(io, "127.0.0.1", 25564);
 
     input::input_ref unlock_cursor = app.m_input_manager->get("unlock_cursor");
     app.m_input_manager->bind_keyboard(SDL_SCANCODE_LALT, unlock_cursor);
     app.capture_mouse(false);
 
     while (!app.should_exit()) {
+        io.poll();
+
         app.m_input_manager->pre_events();
         poll_events(app);
         app.m_input_manager->post_events();

@@ -14,6 +14,10 @@ namespace renderer {
     class renderer;
 }
 
+namespace client {
+    class client;
+}
+
 class application {
 public:
     virtual ~application() = default;
@@ -22,6 +26,7 @@ public:
     virtual class input::manager &input_manager() = 0;
     virtual renderer::renderer &renderer() = 0;
     virtual class game &game() = 0;
+    virtual class client::client &client() = 0;
 
     virtual bool capture_mouse() = 0;
     virtual void capture_mouse(bool) = 0;
