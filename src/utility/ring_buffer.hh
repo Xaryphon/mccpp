@@ -45,18 +45,23 @@ public:
         return { &m_data[0], total - count };
     }
 
-    std::span<const std::byte> write_front() const {
-        size_t start = m_read % N;
+    std::span<std::byte> write_front() {
+        size_t start = m_written % N;
         size_t total = writable();
         size_t count = clamp(total, N - start);
         return { &m_data[start], count };
     }
 
-    std::span<const std::byte> write_back() const {
-        size_t start = m_read % N;
+    std::span<std::byte> write_back() {
+        size_t start = m_written % N;
         size_t total = writable();
         size_t count = clamp(total, N - start);
         return { &m_data[0], total - count };
+    }
+
+    void mark_write(size_t n) {
+        assert(writable() >= n);
+        m_written += n;
     }
 
     void erase(size_t n) {

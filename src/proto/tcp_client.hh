@@ -5,6 +5,7 @@
 #include <asio.hpp>
 
 #include "../utility/coro.hh"
+#include "../utility/ring_buffer.hh"
 
 namespace mccpp::proto {
 
@@ -34,7 +35,6 @@ public:
 
     void connect(asio::io_context &, tcp::endpoint);
 
-    std::span<const std::byte> peek_all() { return { m_read_buffer.m_buffer.data(), m_read_buffer.m_available }; }
     std::byte read_byte() { return m_read_buffer.pop_front(); }
     reader async_read_byte() { return { *this }; }
     task<> async_recv_until(size_t n);
@@ -51,14 +51,10 @@ protected:
 private:
     class buffer {
     public:
-        size_t capacity() { return m_buffer.max_size(); }
-        size_t readable() { return m_available; }
+        size_t capacity() { return m_buffer.capacity(); }
+        size_t readable() { return m_buffer.readable(); }
         void resume_on_readable(std::coroutine_handle<> h);
         std::byte pop_front();
-
-        asio::mutable_buffer write_region() {
-            return { m_buffer.data() + m_available, m_buffer.size() - m_available };
-        }
 
         buffer(tcp_client &c)
         : m_client(c)
@@ -67,8 +63,7 @@ private:
     private:
         tcp_client &m_client;
 
-        std::array<std::byte, 2097151> m_buffer;
-        size_t m_available = 0;
+        ring_buffer<2097151> m_buffer;
         std::coroutine_handle<> m_resume = nullptr;
         friend class tcp_client;
     } m_read_buffer = { *this };

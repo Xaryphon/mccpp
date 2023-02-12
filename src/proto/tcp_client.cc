@@ -41,12 +41,19 @@ void tcp_client::write_flush() {
     m_write_buffer.clear();
 }
 
+static asio::mutable_buffer span_to_asio(std::span<std::byte> buf) {
+    return { buf.data(), buf.size() };
+}
+
 void tcp_client::buffer::resume_on_readable(std::coroutine_handle<> h) {
     assert(!m_resume);
     m_resume = h;
-    m_client.m_socket->async_read_some(write_region(),
+    asio::mutable_buffer front = span_to_asio(m_buffer.write_front());
+    asio::mutable_buffer back = span_to_asio(m_buffer.write_back());
+    m_client.m_socket->async_read_some(std::array {front, back},
         [this](const asio::error_code& error, std::size_t bytes_read)
     {
+        MCCPP_D("Received {} bytes", bytes_read);
         if (error == asio::error::eof) {
             MCCPP_D("EOF");
             // FIXME: throw eof
@@ -54,7 +61,7 @@ void tcp_client::buffer::resume_on_readable(std::coroutine_handle<> h) {
             MCCPP_E("read failed: {}", error.message());
             // FIXME: throw error
         } else {
-            m_available += bytes_read;
+            m_buffer.mark_write(bytes_read);
             if (m_resume) {
                 std::coroutine_handle<> handle = m_resume;
                 m_resume = nullptr;
@@ -66,10 +73,8 @@ void tcp_client::buffer::resume_on_readable(std::coroutine_handle<> h) {
 }
 
 std::byte tcp_client::buffer::pop_front() {
-    assert(m_available >= 1);
     std::byte b = m_buffer.front();
-    --m_available;
-    memmove(m_buffer.data(), m_buffer.data() + 1, m_available);
+    m_buffer.erase(1);
     return b;
 }
 
