@@ -39,9 +39,16 @@ public:
     void write_varint(int32_t);
     void write_bytes(std::span<const std::byte>);
     void write_bool(bool);
+    void write_u8(uint8_t);
     void write_u16(uint16_t);
+    void write_u32(uint32_t);
     void write_u64(uint64_t);
+    void write_i8(int8_t);
+    void write_i16(int16_t);
+    void write_i32(int32_t);
     void write_i64(int64_t);
+
+    void write_identifier(std::string_view str) { write_string<32767>(str); }
 
     void write_uuid(uuid uuid) {
         write_u64(uuid.high());

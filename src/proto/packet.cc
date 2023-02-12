@@ -20,12 +20,31 @@ void packet_writer::write_bool(bool value) {
     m_buffer.emplace_back(value ? std::byte(0x01) : std::byte(0x00));
 }
 
+void packet_writer::write_u8(uint8_t value) {
+    m_buffer.emplace_back(std::byte(value));
+}
+
 void packet_writer::write_u16(uint16_t value) {
     write_as_bytes(std::span<uint16_t>(&value, 1), true);
 }
 
+void packet_writer::write_u32(uint32_t value) {
+    write_as_bytes(std::span<uint32_t>(&value, 1), true);
+}
+
 void packet_writer::write_u64(uint64_t value) {
     write_as_bytes(std::span<uint64_t>(&value, 1), true);
+}
+void packet_writer::write_i8(int8_t value) {
+    m_buffer.emplace_back(std::byte(value));
+}
+
+void packet_writer::write_i16(int16_t value) {
+    write_as_bytes(std::span<int16_t>(&value, 1), true);
+}
+
+void packet_writer::write_i32(int32_t value) {
+    write_as_bytes(std::span<int32_t>(&value, 1), true);
 }
 
 void packet_writer::write_i64(int64_t value) {
