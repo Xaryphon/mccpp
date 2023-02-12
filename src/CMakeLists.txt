@@ -12,4 +12,5 @@ target_sources(mccpp
         game.cc
         logger.cc
         main.cc
+        nbt.cc
 )

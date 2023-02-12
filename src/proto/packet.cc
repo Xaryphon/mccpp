@@ -90,12 +90,54 @@ bool packet_reader::read_bool() {
     }
 }
 
-int64_t packet_reader::read_u64() {
+uint8_t packet_reader::read_u8() {
+    return read_int_n<uint8_t>();
+}
+
+uint16_t packet_reader::read_u16() {
+    return read_int_n<uint16_t>();
+}
+
+uint32_t packet_reader::read_u32() {
+    return read_int_n<uint32_t>();
+}
+
+uint64_t packet_reader::read_u64() {
     return read_int_n<uint64_t>();
+}
+
+int8_t packet_reader::read_i8() {
+    return read_int_n<int8_t>();
+}
+
+int16_t packet_reader::read_i16() {
+    return read_int_n<int16_t>();
+}
+
+int32_t packet_reader::read_i32() {
+    return read_int_n<int32_t>();
 }
 
 int64_t packet_reader::read_i64() {
     return read_int_n<int64_t>();
+}
+
+float packet_reader::read_float() {
+    return read_float_n<float>();
+}
+
+double packet_reader::read_double() {
+    return read_float_n<double>();
+}
+
+std::vector<std::byte> packet_reader::read_byte_array(size_t n) {
+    assert(m_remaining >= n);
+    m_remaining -= n;
+    std::vector<std::byte> data {};
+    data.reserve(n);
+    while (n-- > 0)
+        data.emplace_back(m_read_byte());
+    return data;
 }
 
 template<typename T>
@@ -107,6 +149,28 @@ T packet_reader::read_int_n() {
         v += TU(read_byte()) << (i - 8);
     }
     return std::bit_cast<T>(v);
+}
+
+template<typename T>
+T packet_reader::read_float_n() {
+    assert(m_remaining >= sizeof(T));
+    m_remaining -= sizeof(T);
+
+    std::byte bytes[sizeof(T)];
+    for (size_t i = 0; i < sizeof(T); i++) {
+        bytes[sizeof(T) - i - 1] = m_read_byte();
+    }
+    return std::bit_cast<T>(bytes);
+}
+
+std::string packet_reader::read_char_array(size_t length) {
+    // FIXME: Correctly verify that each length in code points doesn't exceed the max
+    std::string s;
+    s.reserve(length);
+    for (; length > 0; length--) {
+        s.append(1, char(read_byte()));
+    }
+    return s;
 }
 
 std::string packet_reader::read_string(size_t max_code_points) {
@@ -132,12 +196,7 @@ std::string packet_reader::read_string(size_t max_code_points) {
         throw decode_error("string length exceeds max_code_points");
     }
 
-    std::string s;
-    s.reserve(length);
-    for (; length > 0; length--) {
-        s.append(1, char(read_byte()));
-    }
-    return s;
+    return read_char_array(length);
 }
 
 }

@@ -4,44 +4,6 @@
 
 #if 0
 
-#include <utility>
-
-struct foo {
-    foo(int i = 0) : value(i) { std::cout << value << __func__ << std::endl; }
-    ~foo() { std::cout << value << __func__ << std::endl; }
-
-    foo(foo &&other) : value(std::exchange(other.value, 0)) {}
-    foo &operator=(foo &&other) {
-        value = std::exchange(other.value, 0);
-        return *this;
-    }
-
-    int value;
-};
-
-struct bar {
-    bar()
-    {
-        foo f { 1 };
-        (void)f;
-        m_foo = { 2 };
-        throw std::exception();
-    }
-
-    foo m_foo;
-};
-
-int main() {
-    try {
-        bar b {};
-        (void)b;
-    } catch (const std::exception &) {
-
-    }
-}
-
-#elif 0
-
 #include "logger.hh"
 #include <cassert>
 #include "utility/format.hh"
