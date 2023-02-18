@@ -22,10 +22,10 @@ public:
         COMPUTE,
     };
 
-    shader(std::initializer_list<std::pair<stage, std::string_view>>);
+    shader();
     ~shader();
 
-    bool load(bool force_reload = false);
+    bool load(resource::manager &, std::initializer_list<std::pair<stage, std::string_view>>);
     void unload();
 
     bool loaded() {
@@ -37,7 +37,6 @@ public:
     }
 
 private:
-    std::vector<std::pair<stage, resource::shader>> m_shaders;
     GLuint m_id;
 };
 

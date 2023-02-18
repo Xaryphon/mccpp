@@ -6,19 +6,13 @@
 
 namespace mccpp::resource {
 
-class shader_object final : public object<shader_object> {
+class shader_object final : public resource {
 public:
-    shader_object(std::string &&path)
-    : object<shader_object>(std::move(path))
-    {}
+    shader_object(manager &, const identifier &, load_flags);
 
-    std::string_view data() {
-        assert(loaded());
+    std::string_view data() const {
         return { reinterpret_cast<char*>(m_data.data()), m_data.size() };
     }
-
-protected:
-    bool do_load(bool force_reload) override;
 
 private:
     runtime_array<std::byte> m_data;

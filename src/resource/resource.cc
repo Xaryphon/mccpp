@@ -6,7 +6,7 @@
 
 namespace mccpp::resource {
 
-runtime_array<std::byte> read_file(const std::string &path) {
+runtime_array<std::byte> manager::read_file(std::string_view path) {
     std::filebuf *filebuf;
     std::ifstream stream;
     std::string full_path = fmt::format("assets/{}", path);
@@ -31,8 +31,15 @@ runtime_array<std::byte> read_file(const std::string &path) {
     return buffer;
 }
 
-bool object_base::load(bool force_reload) {
-    return m_loaded = do_load(force_reload);
+resource *manager::get_internal(std::type_index type, const identifier &id,
+                   load_flags flags, create_resource_fn factory)
+{
+    auto iter = m_resources.find({ type, id });
+    if (iter != m_resources.end())
+        return iter->second.get();
+
+    auto [iter2, inserted] = m_resources.try_emplace({ type, id }, (this->*factory)(id, flags));
+    return iter2->second.get();
 }
 
 }

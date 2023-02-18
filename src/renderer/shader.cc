@@ -1,17 +1,11 @@
 #include "shader.hh"
 
 #include "../utility/scope_guard.hh"
+#include "../logger.hh"
 
 namespace mccpp::renderer {
 
-shader::shader(std::initializer_list<std::pair<stage, std::string_view>> stages)
-: m_id(0)
-{
-    m_shaders.reserve(stages.size());
-    for (auto [stage, path] : stages) {
-        m_shaders.emplace_back(stage, std::string(path));
-    }
-}
+shader::shader() : m_id(0) {}
 
 shader::~shader() {
     unload();
@@ -49,12 +43,7 @@ static const char *stage_to_str(shader::stage stage) {
 
 #undef STAGE_TO_GL
 
-static GLuint compile_and_attach_shader(GLuint program, shader::stage stage, resource::shader &resource)
-{
-    if (!resource->load()) {
-        return 0;
-    }
-
+static GLuint compile_and_attach_shader(GLuint program, shader::stage stage, resource::shader resource) {
     const char *source_pointer = resource->data().data();
     const int source_length = resource->data().length();
 
@@ -76,8 +65,7 @@ static GLuint compile_and_attach_shader(GLuint program, shader::stage stage, res
 
         auto emsg = std::make_unique<char[]>(elen);
         glGetShaderInfoLog(shader, elen, &elen, emsg.get());
-        MCCPP_E("glCompileShader failed for {} {}: {}",
-                stage_to_str(stage), resource->resource_path(), emsg.get());
+        MCCPP_E("glCompileShader failed for {}: {}", stage_to_str(stage), emsg.get());
         glDeleteShader(shader);
         return 0;
     }
@@ -108,9 +96,7 @@ static bool link_program(GLuint program)
     return true;
 }
 
-bool shader::load(bool force_reload) {
-    (void)force_reload;
-
+bool shader::load(resource::manager &res_mgr, std::initializer_list<std::pair<stage, std::string_view>> shaders) {
     if (!m_id) {
         m_id = glCreateProgram();
         if (!m_id) {
@@ -120,9 +106,10 @@ bool shader::load(bool force_reload) {
     }
 
     std::vector<GLuint> objects {};
-    objects.reserve(m_shaders.size());
+    objects.reserve(shaders.size());
 
-    for (auto &[stage, resource] : m_shaders) {
+    for (auto &[stage, path] : shaders) {
+        resource::shader resource = res_mgr.get<resource::shader_object>(path);
         GLuint shader = compile_and_attach_shader(m_id, stage, resource);
         if (!shader) {
             for (GLuint shader : objects) {

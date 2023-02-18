@@ -43,16 +43,13 @@ private:
     SDL_Window   *m_window = nullptr;
     SDL_GLContext m_gl_context = nullptr;
 
-    class shader m_shader {
-        { shader::VERTEX,   "mccpp/shaders/basic.vert" },
-        { shader::FRAGMENT, "mccpp/shaders/basic.frag" },
-    };
+    class shader m_shader;
     GLuint m_VAO = 0;
     GLuint m_VBO = 0;
     GLuint m_EBO = 0;
 
     GLuint m_tex_uv = 0;
-    resource::texture m_res_uv { "mccpp/textures/misc/uv_16x16.png" };
+    resource::texture m_res_uv;
 
     struct camera m_camera = {};
 };
@@ -142,8 +139,11 @@ renderer_impl::renderer_impl(application &app) {
     }
     MCCPP_SCOPE_FAIL { ImGui_ImplOpenGL3_Shutdown(); };
 
-    m_shader.load();
-    m_res_uv->load();
+    m_shader.load(app.resource_manager(), {
+        { shader::VERTEX,   "mccpp:basic.vert" },
+        { shader::FRAGMENT, "mccpp:basic.frag" },
+    });
+    m_res_uv = app.resource_manager().get<resource::texture_object>("mccpp:misc/uv_16x16.png");
 
     glGenTextures(1, &m_tex_uv);
     glBindTexture(GL_TEXTURE_2D, m_tex_uv);

@@ -2,11 +2,9 @@
 
 namespace mccpp::resource {
 
-bool shader_object::do_load(bool force_reload) {
-    (void)force_reload;
-
-    m_data = read_file(resource_path());
-    return true;
+shader_object::shader_object(manager &mgr, const identifier &id, load_flags flags) {
+    (void)flags;
+    m_data = mgr.read_file("{}/shaders/{}", id.name_space(), id.name());
 }
 
 }

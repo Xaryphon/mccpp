@@ -13,6 +13,7 @@
 #include "input/input.hh"
 #include "logger.hh"
 #include "renderer/renderer.hh"
+#include "resource/resource.hh"
 #include "utility/misc.hh"
 #include "utility/scope_guard.hh"
 
@@ -25,6 +26,11 @@ public:
     cvar::manager &cvar_manager() override {
         assert(m_cvar_manager.get());
         return *m_cvar_manager;
+    };
+
+    resource::manager &resource_manager() override {
+        assert(m_resource_manager.get());
+        return *m_resource_manager;
     };
 
     input::manager &input_manager() override {
@@ -60,6 +66,7 @@ private:
     unsigned m_frame_count;
 
     std::unique_ptr<cvar::manager> m_cvar_manager;
+    std::unique_ptr<resource::manager> m_resource_manager;
     std::unique_ptr<input::manager> m_input_manager;
     std::unique_ptr<renderer::renderer> m_renderer;
     std::unique_ptr<class game> m_game;
@@ -147,12 +154,13 @@ int main(int argc, char **argv) {
     MCCPP_SCOPE_EXIT { g_app = nullptr; };
 
     app.m_cvar_manager = cvar::manager::create(app);
+    app.m_resource_manager = std::make_unique<resource::manager>();
     app.m_input_manager = input::manager::create(app);
     app.m_renderer = renderer::renderer::create(app);
     app.m_game = game::create(app);
     app.m_client = std::make_unique<client::client>(app);
 
-    app.m_client->connect(io, "127.0.0.1", 25564);
+    //app.m_client->connect(io, "127.0.0.1", 25564);
 
     input::input_ref unlock_cursor = app.m_input_manager->get("unlock_cursor");
     app.m_input_manager->bind_keyboard(SDL_SCANCODE_LALT, unlock_cursor);

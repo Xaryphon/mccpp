@@ -6,29 +6,13 @@
 
 namespace mccpp::resource {
 
-class texture_object final : public object<texture_object> {
+class texture_object final : public resource {
 public:
-    texture_object(std::string &&path)
-    : object<texture_object>(std::move(path))
-    {}
+    texture_object(manager &, const identifier &, load_flags);
 
-    uint32_t width() {
-        assert(loaded());
-        return m_width;
-    }
-
-    uint32_t height() {
-        assert(loaded());
-        return m_height;
-    }
-
-    const runtime_array<std::byte> &pixels() {
-        assert(loaded());
-        return m_pixels;
-    }
-
-protected:
-    bool do_load(bool force_reload) override;
+    uint32_t width() const { return m_width; }
+    uint32_t height() const { return m_height; }
+    const runtime_array<std::byte> &pixels() const { return m_pixels; }
 
 private:
     uint32_t m_width;
