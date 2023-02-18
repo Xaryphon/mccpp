@@ -11,6 +11,7 @@ set(packet_handlers
     login/login_compression_packet
     play/custom_payload_packet
     play/keep_alive_packet
+    play/level_chunk_with_light_packet
     play/login_packet
     status/pong_response_packet
     status/status_response_packet

@@ -150,7 +150,7 @@ int main(int argc, char **argv) {
     app.m_input_manager = input::manager::create(app);
     app.m_renderer = renderer::renderer::create(app);
     app.m_game = game::create(app);
-    app.m_client = std::make_unique<client::client>();
+    app.m_client = std::make_unique<client::client>(app);
 
     app.m_client->connect(io, "127.0.0.1", 25564);
 

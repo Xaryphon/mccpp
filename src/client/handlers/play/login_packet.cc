@@ -57,6 +57,9 @@ void client::handle_packet<proto::generated::clientbound::play::login_packet>(pr
         MCCPP_D("Death Location: {} {} {} {}", death_dimension_name, death_location.x(), death_location.y(), death_location.z());
     }
 
+    // FIXME: get world height from registry_codec/dimension_type/height and handle the rest of the registry
+    m_game.create_world(384);
+
     queue_send<serverbound::play::custom_payload_packet>({
         .channel = "minecraft:brand",
         .data = string_to_bytes("mccpp"),

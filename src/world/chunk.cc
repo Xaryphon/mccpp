@@ -10,6 +10,73 @@ bool chunk::is_air_at(int x, int y, int z) const
         return blocks[z * 256 + x * 16 + y].is_air;
 }
 
+static const block &block_from_global_palette(int32_t) {
+    static block b { false, { 0, 0, 0 } };
+    return b;
+}
+
+static void load_blocks(chunk &c, proto::packet_reader &s) {
+    uint8_t bits_per_entry = s.read_u8();
+    if (bits_per_entry == 0) {
+        int32_t value = s.read_varint();
+        const block &gpb = block_from_global_palette(value);
+        for (block &b : c.blocks) {
+            b = gpb;
+        }
+        /* data_array_length */ s.read_varint();
+        return;
+    }
+
+    if (bits_per_entry <= 8) {
+        if (bits_per_entry < 4) {
+            bits_per_entry = 4;
+        }
+
+        int32_t palette_length = s.read_varint();
+        if (palette_length < 0)
+            throw proto::decode_error("Invalid palette length");
+        std::vector<int32_t> palette = {};
+        while (palette_length-- > 0) {
+            palette.emplace_back(s.read_varint());
+        }
+
+        /* data_array_length */ s.read_varint();
+        std::vector<uint64_t> data_array {};
+        // 4096 blocks * bits per entry = total bits
+        // total bits / 64 = u64 count
+        size_t u64_count = 4096 * bits_per_entry / 64;
+        data_array.reserve(u64_count + 1);
+        for (size_t i = 0; i < u64_count; i++) {
+            data_array.emplace_back(s.read_u64());
+        }
+        // add an extra unused value to make parsing easier
+        data_array.emplace_back(0);
+
+
+        for (size_t i = 0; i < 4096; i++) {
+            size_t entry_offset = i * bits_per_entry;
+
+            uint64_t first_u64 = data_array[entry_offset / 64];
+            uint64_t second_u64 = data_array[entry_offset / 64 + 1];
+            uint64_t start_offset = entry_offset % 64;
+            uint64_t end_offset = start_offset + bits_per_entry;
+        }
+
+        return;
+    }
+}
+
+static void load_biomes(chunk &c, proto::packet_reader &s) {
+    (void)c;
+    (void)s;
+}
+
+void chunk::load(proto::packet_reader &s) {
+    /* block_count */ s.read_i16();
+    load_blocks(*this, s);
+    load_biomes(*this, s);
+}
+
 // glm::cross has a pointless assert for floating point only
 static glm::ivec3 ivec3_cross(glm::ivec3 x, glm::ivec3 y)
 {

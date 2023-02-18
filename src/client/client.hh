@@ -2,6 +2,7 @@
 
 #include <memory>
 
+#include "../game.hh"
 #include "../proto/client.hh"
 #include "../proto/generated/misc.hh"
 #include "../proto/packet.hh"
@@ -12,6 +13,10 @@ class client final : public proto::client {
     using connection_state = proto::generated::connection_state;
 
 public:
+    client(application &app)
+    : m_game(app.game())
+    {}
+
     void connect(asio::io_context &, std::string_view address, uint16_t port);
 
 private:
@@ -24,6 +29,8 @@ private:
     // NOTE: implemented in handlers.cc and handlers/**/*.cc
     template<class PacketInfo>
     void handle_packet(proto::packet_reader &);
+
+    game &m_game;
 
     connection_state m_state = connection_state::HANDSHAKING;
 
