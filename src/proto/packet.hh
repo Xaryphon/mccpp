@@ -11,6 +11,7 @@
 
 #include "../utility/coro.hh"
 #include "../uuid.hh"
+#include "exceptions.hh"
 
 namespace mccpp::proto {
 
@@ -117,6 +118,13 @@ public:
 
     size_t remaining() { return m_remaining; }
     void discard(size_t);
+    void discard_bitset() {
+        int32_t count = read_varint();
+        if (count < 0) {
+            throw decode_error("invalid count for bitset");
+        }
+        discard(count * 8);
+    }
 
     std::byte read_byte();
     int32_t read_varint();
