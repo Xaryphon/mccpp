@@ -13,3 +13,4 @@ function(mccpp_test target)
 endfunction()
 
 mccpp_test(test_proto_varint proto/varint.cc)
+mccpp_test(test_client_extract_bits client/extract_bits.cc)

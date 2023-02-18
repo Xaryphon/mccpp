@@ -1,5 +1,7 @@
 #include "chunk.hh"
 
+#include "../utility/extract_bits.hh"
+
 namespace mccpp::world {
 
 bool chunk::is_air_at(int x, int y, int z) const
@@ -34,8 +36,9 @@ static void load_blocks(chunk &c, proto::packet_reader &s) {
 
         int32_t palette_length = s.read_varint();
         if (palette_length < 0)
-            throw proto::decode_error("Invalid palette length");
+            throw proto::decode_error("invalid palette length");
         std::vector<int32_t> palette = {};
+        palette.reserve(palette_length);
         while (palette_length-- > 0) {
             palette.emplace_back(s.read_varint());
         }
@@ -52,14 +55,9 @@ static void load_blocks(chunk &c, proto::packet_reader &s) {
         // add an extra unused value to make parsing easier
         data_array.emplace_back(0);
 
-
         for (size_t i = 0; i < 4096; i++) {
-            size_t entry_offset = i * bits_per_entry;
-
-            uint64_t first_u64 = data_array[entry_offset / 64];
-            uint64_t second_u64 = data_array[entry_offset / 64 + 1];
-            uint64_t start_offset = entry_offset % 64;
-            uint64_t end_offset = start_offset + bits_per_entry;
+            uint64_t entry = extract_bits(data_array, i * bits_per_entry, bits_per_entry);
+            (void)entry;
         }
 
         return;
