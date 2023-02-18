@@ -166,18 +166,32 @@ tag_compound::tag_compound(proto::packet_reader &s) {
     }
 }
 
-tag_int_array::tag_int_array(proto::packet_reader &) {
-    throw parse_error("unimplemented");
+tag_int_array::tag_int_array(proto::packet_reader &s) {
+    int32_t length = s.read_i32();
+    if (length <= 0)
+        return;
+    m_container.reserve(length);
+    while (length-- > 0) {
+        m_container.emplace_back(s.read_i32());
+    }
 }
 
-tag_long_array::tag_long_array(proto::packet_reader &) {
-    throw parse_error("unimplemented");
+tag_long_array::tag_long_array(proto::packet_reader &s) {
+    int32_t length = s.read_i32();
+    if (length <= 0)
+        return;
+    m_container.reserve(length);
+    while (length-- > 0) {
+        m_container.emplace_back(s.read_i64());
+    }
 }
 
 nbt::nbt(mccpp::proto::packet_reader &s) {
     auto type = tag_type(s.read_byte());
-    if (type == TAG_END)
-        throw parse_error("unexpected TAG_End");
+    if (type == TAG_END) {
+        m_root = nullptr;
+        return;
+    }
 
     uint16_t name_length = s.read_u16();
     std::string name = s.read_char_array(name_length);

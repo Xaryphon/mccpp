@@ -191,12 +191,32 @@ class tag_int_array final : public tag {
 public:
     tag_type type() override { return TAG_INT_ARRAY; }
     tag_int_array(proto::packet_reader &);
+
+    using element_type = int32_t;
+    using container_type = std::vector<element_type>;
+    using iterator = container_type::iterator;
+
+    iterator begin() { return m_container.begin(); }
+    iterator end() { return m_container.end(); }
+
+private:
+    container_type m_container;
 };
 
 class tag_long_array final : public tag {
 public:
     tag_type type() override { return TAG_LONG_ARRAY; }
     tag_long_array(proto::packet_reader &);
+
+    using element_type = int64_t;
+    using container_type = std::vector<element_type>;
+    using iterator = container_type::iterator;
+
+    iterator begin() { return m_container.begin(); }
+    iterator end() { return m_container.end(); }
+
+private:
+    container_type m_container;
 };
 
 class nbt {
