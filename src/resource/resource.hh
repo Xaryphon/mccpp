@@ -1,6 +1,7 @@
 #pragma once
 
 #include <unordered_map>
+#include <list>
 #include <memory>
 #include <typeinfo>
 #include <typeindex>
@@ -61,6 +62,7 @@ private:
     };
 
     storage_type m_resources;
+    std::list<std::pair<std::type_index, const identifier &>> m_init_list;
 };
 
 }

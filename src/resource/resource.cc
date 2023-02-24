@@ -1,8 +1,11 @@
 #include "resource.hh"
 
+#include <algorithm>
+#include <cassert>
 #include <fstream>
 
 #include "../logger.hh"
+#include "../utility/scope_guard.hh"
 
 namespace mccpp::resource {
 
@@ -38,7 +41,24 @@ resource *manager::get_internal(std::type_index type, const identifier &id,
     if (iter != m_resources.end())
         return iter->second.get();
 
-    auto [iter2, inserted] = m_resources.try_emplace({ type, id }, (this->*factory)(id, flags));
+    if (std::any_of(m_init_list.begin(), m_init_list.end(), [&type, &id](const auto &item) {
+            return item.first == type && item.second == id;
+        }))
+    {
+        MCCPP_E("Detected a cycle for the following resources:");
+        for (auto &item : m_init_list) {
+            MCCPP_E("- {} (type: {})", item.second.full(), item.first.name());
+        }
+        throw std::runtime_error("resource cycle detected");
+    }
+
+    auto init_iter = m_init_list.emplace(m_init_list.begin(), type, id);
+    MCCPP_SCOPE_EXIT { m_init_list.erase(init_iter); };
+
+    std::unique_ptr<resource> res = (this->*factory)(id, flags);
+
+    auto [iter2, inserted] = m_resources.try_emplace({ type, id }, std::move(res));
+    assert(inserted);
     return iter2->second.get();
 }
 

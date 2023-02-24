@@ -1,4 +1,4 @@
-#include "../../handlers.hh"
+#include "generated/client/handlers.hh"
 
 #include "../../../logger.hh"
 #include "../../../proto/serverbound/packets.hh"

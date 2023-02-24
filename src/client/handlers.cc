@@ -1,12 +1,11 @@
-#include "handlers.hh"
+#include "generated/client/handlers.hh"
 
-#include "../logger.hh"
-#include "../proto/exceptions.hh"
-#include "../proto/generated/clientbound/iterators.hh"
-#include "../proto/generated/clientbound/traits.hh"
-#include "../proto/generated/format.hh"
+#include "logger.hh"
+#include "proto/exceptions.hh"
+#include "generated/proto/clientbound/iterators.hh"
+#include "generated/proto/clientbound/traits.hh"
+#include "generated/proto/format.hh"
 #include "client.hh"
-#include "handlers.hh"
 
 namespace mccpp::client {
 

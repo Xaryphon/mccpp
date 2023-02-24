@@ -1,3 +1,3 @@
 #!/bin/sh
 
-rm -rf build
+cmake --build build --target clean

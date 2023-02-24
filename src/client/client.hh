@@ -4,7 +4,7 @@
 
 #include "../game.hh"
 #include "../proto/client.hh"
-#include "../proto/generated/misc.hh"
+#include "generated/proto/misc.hh"
 #include "../proto/packet.hh"
 
 namespace mccpp::client {

@@ -16,6 +16,7 @@
 
 #include "../logger.hh"
 #include "../PerlinNoise.hpp"
+#include "../resource/model.hh"
 #include "../resource/shader.hh"
 #include "../resource/texture.hh"
 #include "../utility/misc.hh"
@@ -40,6 +41,8 @@ public:
     }
 
 private:
+    resource::manager &m_resource_manager;
+
     SDL_Window   *m_window = nullptr;
     SDL_GLContext m_gl_context = nullptr;
 
@@ -52,6 +55,9 @@ private:
     resource::texture m_res_uv;
 
     struct camera m_camera = {};
+
+    std::vector<vertex> m_vertices;
+    std::vector<unsigned> m_indicies;
 };
 
 std::unique_ptr<renderer> renderer::create(application &app) {
@@ -91,9 +97,120 @@ world::chunk generate_debug_chunk2()
     return c;
 }
 
-renderer_impl::renderer_impl(application &app) {
-    (void)app;
+static bool should_draw_face(const resource::model_face &face) {
+    return face.cullface != resource::model_cullface::ALWAYS;
+}
 
+static void generate_model_mesh(resource::model model, std::vector<vertex> &vertices, std::vector<unsigned> &indicies) {
+    using namespace resource;
+
+    model->debug_dump();
+
+    auto *elements = model->get_element_array();
+    assert(elements != nullptr);
+
+    glm::vec3 model_offset { 0.f, 0.f, 0.f };
+
+    size_t index_start = vertices.size();
+    for (const model_element &elem : *elements) {
+        glm::vec3 from = model_offset + elem.from / 16.f;
+        glm::vec3 to = model_offset + elem.to / 16.f;
+        if (should_draw_face(elem.down)) {
+            glm::vec3 normal(0, -1, 0);
+            glm::vec3 color(normal * 0.5f + 0.5f);
+            vertices.emplace_back(glm::vec3(from.x, from.y, from.z), normal, color, glm::vec2(0, 0));
+            vertices.emplace_back(glm::vec3(to.x,   from.y, from.z), normal, color, glm::vec2(1, 0));
+            vertices.emplace_back(glm::vec3(from.x, from.y, to.z),   normal, color, glm::vec2(0, 1));
+            vertices.emplace_back(glm::vec3(to.x,   from.y, to.z),   normal, color, glm::vec2(1, 1));
+            indicies.emplace_back(index_start + 0);
+            indicies.emplace_back(index_start + 1);
+            indicies.emplace_back(index_start + 2);
+            indicies.emplace_back(index_start + 3);
+            indicies.emplace_back(index_start + 2);
+            indicies.emplace_back(index_start + 1);
+            index_start += 4;
+        }
+        if (should_draw_face(elem.up)) {
+            glm::vec3 normal(0, 1, 0);
+            glm::vec3 color(normal * 0.5f + 0.5f);
+            vertices.emplace_back(glm::vec3(from.x, to.y, from.z), normal, color, glm::vec2(0, 0));
+            vertices.emplace_back(glm::vec3(from.x, to.y, to.z),   normal, color, glm::vec2(0, 1));
+            vertices.emplace_back(glm::vec3(to.x,   to.y, from.z), normal, color, glm::vec2(1, 0));
+            vertices.emplace_back(glm::vec3(to.x,   to.y, to.z),   normal, color, glm::vec2(1, 1));
+            indicies.emplace_back(index_start + 0);
+            indicies.emplace_back(index_start + 1);
+            indicies.emplace_back(index_start + 2);
+            indicies.emplace_back(index_start + 1);
+            indicies.emplace_back(index_start + 3);
+            indicies.emplace_back(index_start + 2);
+            index_start += 4;
+        }
+        if (should_draw_face(elem.north)) {
+            glm::vec3 normal(0, 0, -1);
+            glm::vec3 color(normal * 0.5f + 0.5f);
+            vertices.emplace_back(glm::vec3(from.x, from.y, from.z), normal, color, glm::vec2(0, 0));
+            vertices.emplace_back(glm::vec3(from.x, to.y,   from.z), normal, color, glm::vec2(1, 0));
+            vertices.emplace_back(glm::vec3(to.x,   from.y, from.z), normal, color, glm::vec2(0, 1));
+            vertices.emplace_back(glm::vec3(to.x,   to.y,   from.z), normal, color, glm::vec2(1, 1));
+            indicies.emplace_back(index_start + 0);
+            indicies.emplace_back(index_start + 1);
+            indicies.emplace_back(index_start + 2);
+            indicies.emplace_back(index_start + 3);
+            indicies.emplace_back(index_start + 2);
+            indicies.emplace_back(index_start + 1);
+            index_start += 4;
+        }
+        if (should_draw_face(elem.south)) {
+            glm::vec3 normal(0, 0, 1);
+            glm::vec3 color(normal * 0.5f + 0.5f);
+            vertices.emplace_back(glm::vec3(from.x, from.y, to.z), normal, color, glm::vec2(0, 0));
+            vertices.emplace_back(glm::vec3(to.x,   from.y, to.z), normal, color, glm::vec2(0, 1));
+            vertices.emplace_back(glm::vec3(from.x, to.y,   to.z), normal, color, glm::vec2(1, 0));
+            vertices.emplace_back(glm::vec3(to.x,   to.y,   to.z), normal, color, glm::vec2(1, 1));
+            indicies.emplace_back(index_start + 0);
+            indicies.emplace_back(index_start + 1);
+            indicies.emplace_back(index_start + 2);
+            indicies.emplace_back(index_start + 3);
+            indicies.emplace_back(index_start + 2);
+            indicies.emplace_back(index_start + 1);
+            index_start += 4;
+        }
+        if (should_draw_face(elem.east)) {
+            glm::vec3 normal(1, 0, 0);
+            glm::vec3 color(normal * 0.5f + 0.5f);
+            vertices.emplace_back(glm::vec3(to.x, from.y, from.z), normal, color, glm::vec2(0, 0));
+            vertices.emplace_back(glm::vec3(to.x, to.y,   from.z), normal, color, glm::vec2(1, 0));
+            vertices.emplace_back(glm::vec3(to.x, from.y, to.z),   normal, color, glm::vec2(0, 1));
+            vertices.emplace_back(glm::vec3(to.x, to.y,   to.z),   normal, color, glm::vec2(1, 1));
+            indicies.emplace_back(index_start + 0);
+            indicies.emplace_back(index_start + 1);
+            indicies.emplace_back(index_start + 2);
+            indicies.emplace_back(index_start + 3);
+            indicies.emplace_back(index_start + 2);
+            indicies.emplace_back(index_start + 1);
+            index_start += 4;
+        }
+        if (should_draw_face(elem.west)) {
+            glm::vec3 normal(-1, 0, 0);
+            glm::vec3 color(normal * 0.5f + 0.5f);
+            vertices.emplace_back(glm::vec3(from.x, from.y, from.z), normal, color, glm::vec2(0, 0));
+            vertices.emplace_back(glm::vec3(from.x, from.y, to.z),   normal, color, glm::vec2(0, 1));
+            vertices.emplace_back(glm::vec3(from.x, to.y,   from.z), normal, color, glm::vec2(1, 0));
+            vertices.emplace_back(glm::vec3(from.x, to.y,   to.z),   normal, color, glm::vec2(1, 1));
+            indicies.emplace_back(index_start + 0);
+            indicies.emplace_back(index_start + 1);
+            indicies.emplace_back(index_start + 2);
+            indicies.emplace_back(index_start + 3);
+            indicies.emplace_back(index_start + 2);
+            indicies.emplace_back(index_start + 1);
+            index_start += 4;
+        }
+    }
+}
+
+renderer_impl::renderer_impl(application &app)
+: m_resource_manager(app.resource_manager())
+{
     //SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 0);
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3);
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 3);
@@ -212,6 +329,8 @@ renderer_impl::renderer_impl(application &app) {
         return true;
     });
 
+    generate_model_mesh(m_resource_manager.get<resource::model_object>("block/anvil"), m_vertices, m_indicies);
+
     SDL_ShowWindow(m_window);
 }
 
@@ -235,8 +354,8 @@ void renderer_impl::end_frame()
     int width, height;
     SDL_GL_GetDrawableSize(m_window, &width, &height);
 
-    static const auto chunk = generate_debug_chunk();
-    static auto [vertices, indicies] = chunk.generate_vertices();
+    //static const auto chunk = generate_debug_chunk();
+    //static auto [vertices, indicies] = chunk.generate_vertices();
 
     glm::vec3 &camera_position = m_camera.position;
     glm::vec3 &camera_rotation = m_camera.rotation;
@@ -257,14 +376,14 @@ void renderer_impl::end_frame()
     glUniform1i(1, 0);
 
     glBindVertexArray(m_VAO);
-    glBufferData(GL_ARRAY_BUFFER, vertices.size() * sizeof(vertex), vertices.data(), GL_DYNAMIC_DRAW);
-    glBufferData(GL_ELEMENT_ARRAY_BUFFER, indicies.size() * sizeof(unsigned), indicies.data(), GL_DYNAMIC_DRAW);
+    glBufferData(GL_ARRAY_BUFFER, m_vertices.size() * sizeof(vertex), m_vertices.data(), GL_DYNAMIC_DRAW);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, m_indicies.size() * sizeof(unsigned), m_indicies.data(), GL_DYNAMIC_DRAW);
 
     glViewport(0, 0, width, height);
     glClearColor(0.f, 0.f, 0.f, 1.f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-    glDrawElements(GL_TRIANGLES, indicies.size(), GL_UNSIGNED_INT, nullptr);
+    glDrawElements(GL_TRIANGLES, m_indicies.size(), GL_UNSIGNED_INT, nullptr);
     glBindVertexArray(0);
 
     ImGui::Render();

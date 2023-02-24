@@ -22,14 +22,16 @@ string(REPLACE "/" "::" packet_handlers "${packet_handlers}")
 
 target_sources(mccpp PRIVATE ${packet_handler_files})
 
-set(packet_handlers_file "${CMAKE_CURRENT_BINARY_DIR}/handlers.hh.tmp")
+set(packet_handlers_tmp_file "${PROJECT_BINARY_DIR}/generated/client/handlers.hh.tmp")
+set(packet_handlers_file "${PROJECT_BINARY_DIR}/generated/client/handlers.hh")
 
-file(WRITE "${packet_handlers_file}" "#pragma once\n\n#include \"client.hh\"\n#include \"../proto/generated/clientbound/types.hh\"\n\nnamespace mccpp::client {\n\n")
+file(WRITE "${packet_handlers_tmp_file}" "#pragma once\n\n#include \"client/client.hh\"\n#include \"../proto/clientbound/types.hh\"\n\nnamespace mccpp::client {\n\n")
 foreach(packet_handler ${packet_handlers})
-    file(APPEND "${packet_handlers_file}" "template<> void client::handle_packet<proto::generated::clientbound::${packet_handler}>(proto::packet_reader &);\n")
+    file(APPEND "${packet_handlers_tmp_file}" "template<> void client::handle_packet<proto::generated::clientbound::${packet_handler}>(proto::packet_reader &);\n")
 endforeach()
-file(APPEND "${packet_handlers_file}" "\n}\n")
+file(APPEND "${packet_handlers_tmp_file}" "\n}\n")
 
 execute_process(
-    COMMAND cmake -E copy_if_different "${packet_handlers_file}" "${CMAKE_CURRENT_SOURCE_DIR}/handlers.hh"
+    COMMAND cmake -E copy_if_different "${packet_handlers_tmp_file}" "${packet_handlers_file}"
+    COMMAND_ERROR_IS_FATAL ANY
 )

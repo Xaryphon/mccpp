@@ -9,5 +9,5 @@ layout (location = 1) uniform sampler2D TexUV;
 
 void main()
 {
-    FragColor = texture(TexUV, vertexUV) * 0.5f + vec4(vertexColor * 0.5f, 1.0f);
+    FragColor = /*texture(TexUV, vertexUV) * 0.5f + */vec4(vertexColor * 1.f, 1.0f);
 }

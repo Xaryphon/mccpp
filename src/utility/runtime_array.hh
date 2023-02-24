@@ -68,6 +68,9 @@ public:
         m_size = size;
     }
 
+    constexpr T *begin() const noexcept { return m_data.get(); }
+    constexpr T *end() const noexcept { return m_data.get() + m_size; }
+
 private:
     std::unique_ptr<T[]> m_data;
     size_t m_size;

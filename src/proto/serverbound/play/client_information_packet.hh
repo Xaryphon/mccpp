@@ -1,7 +1,7 @@
 #pragma once
 
-#include "../../generated/misc.hh"
-#include "../../generated/serverbound/types.hh"
+#include "generated/proto/misc.hh"
+#include "generated/proto/serverbound/types.hh"
 #include "../../packet.hh"
 
 namespace mccpp::proto {

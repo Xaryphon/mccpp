@@ -18,6 +18,9 @@ struct block {
     glm::vec3 color;
 };
 
+void generate_face(std::vector<vertex> &vertices, std::vector<unsigned> &indicies,
+                   block block, glm::vec3 position, glm::ivec3 normal);
+
 struct chunk {
     std::array<block, 16 * 16 * 16> blocks;
 
