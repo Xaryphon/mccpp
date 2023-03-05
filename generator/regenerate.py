@@ -12,6 +12,9 @@ from pathlib import Path
 import subprocess
 from typing import List
 from dataclasses import dataclass
+import re
+
+TIMESTAMP_NAME_REGEX = re.compile(r"^[A-Z_]+$")
 
 @dataclass
 class Args:
@@ -41,6 +44,11 @@ def is_out_of_date(timestamp_file: str, source_files: List[str]) -> bool:
 
 def main(argv) -> None:
     args = parse_args(argv)
+    # Require all caps to prevent mistakes from happening
+    if not TIMESTAMP_NAME_REGEX.match(path.basename(args.timestamp_file)):
+        print(f"Unacceptable timestamp file name {args.timestamp_file!r}:", file=sys.stderr)
+        print("Basename can only contains uppercase letters and underscores", file=sys.stderr)
+        exit(1)
     if is_out_of_date(args.timestamp_file, args.source_files):
         process = subprocess.run(args.command)
         if process.returncode != 0:
