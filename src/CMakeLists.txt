@@ -3,6 +3,7 @@ add_subdirectory(input)
 add_subdirectory(proto)
 add_subdirectory(renderer)
 add_subdirectory(resource)
+add_subdirectory(vfs)
 add_subdirectory(world)
 
 target_sources(mccpp
