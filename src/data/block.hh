@@ -54,6 +54,21 @@ private:
     property_id m_id;
 };
 
+class property_value {
+public:
+    property_value(class property prop, size_t value)
+    : m_property(prop)
+    , m_value(value)
+    {}
+
+    class property property() { return m_property; }
+    size_t value() { return m_value; }
+
+private:
+    class property m_property;
+    size_t m_value;
+};
+
 class block_property_iterator {
 public:
     block_property_iterator(uint16_t index) : m_index(index) {}
@@ -112,6 +127,32 @@ private:
     block_id m_id;
 };
 
+class block_state_property_iterator {
+public:
+    block_state_property_iterator(state_id value, block_property_iterator prop)
+    : m_value(value)
+    , m_prop(prop)
+    {}
+
+    block_state_property_iterator &operator++() {
+        m_value /= (*m_prop).count();
+        ++m_prop;
+        return *this;
+    }
+
+    property_value operator*() {
+        return { *m_prop, m_value % (*m_prop).count() };
+    }
+
+    bool operator==(const block_state_property_iterator &other) const {
+        return m_prop == other.m_prop;
+    }
+
+private:
+    state_id m_value;
+    block_property_iterator m_prop;
+};
+
 class state {
 public:
     state() = default;
@@ -119,6 +160,12 @@ public:
 
     state_id id() { return m_id; }
     class block block() { return impl::state::block[m_id]; }
+
+    block_state_property_iterator begin() {
+        // once again this idiotic behaviour of u16 + u16 -> int
+        return { static_cast<state_id>(m_id - block().first_state_id()), block().properties().begin() };
+    }
+    block_state_property_iterator end() { return { 0, block().properties().end() }; }
 
 private:
     state_id m_id;
