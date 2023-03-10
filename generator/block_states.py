@@ -88,6 +88,7 @@ def write_cpp(w: TextIOBase, props: Dict[str, Property], blocks: List[Block]) ->
     w.write('\n')
     w.write('namespace mccpp::data::impl {\n')
     w.write(' namespace property {\n')
+    w.write(f'  const size_t count = {len(props)};\n')
     w.write('  const uint16_t flags[] = {')
     value_offset = 0
     for prop in props.values():
@@ -126,6 +127,7 @@ def write_cpp(w: TextIOBase, props: Dict[str, Property], blocks: List[Block]) ->
     w.write('};\n')
     w.write(' }\n')
     w.write(' namespace block {\n')
+    w.write(f'  const size_t count = {len(blocks)};\n')
     w.write('  const char *const name[] = {')
     for block in blocks:
         w.write(f'"{block.name}",')
@@ -159,6 +161,7 @@ def write_cpp(w: TextIOBase, props: Dict[str, Property], blocks: List[Block]) ->
     w.write('};\n')
     w.write(' }\n')
     w.write(' namespace state {\n')
+    w.write(f'  const size_t count = {len([s for b in blocks for s in b.states])};\n')
     w.write('  const block_id block[] = {')
     for block in blocks:
         for state in block.states:

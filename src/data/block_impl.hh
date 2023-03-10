@@ -10,6 +10,7 @@ using block_id = uint16_t;
 using property_id = uint8_t;
 
 namespace impl::property {
+    extern const size_t count;
     // bits 0-4 count
     //      5-6 type
     //          0 enum
@@ -25,6 +26,7 @@ namespace impl::property {
 }
 
 namespace impl::block {
+    extern const size_t count;
     extern const char *const name[];
     extern const char *const translation_key[];
     extern const state_id first_state_id[];
@@ -37,6 +39,7 @@ namespace impl::block {
 }
 
 namespace impl::state {
+    extern const size_t count;
     extern const block_id block[];
 }
 
