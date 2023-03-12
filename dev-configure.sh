@@ -3,7 +3,7 @@
 set -e
 
 
-CXXFLAGS="-Wall -Wpedantic -Wextra -Werror"
+CXXFLAGS="$CXXFLAGS -Wall -Wpedantic -Wextra -Werror"
 
 # Building glm on c++20 requires this
 CXXFLAGS="$CXXFLAGS -Wno-volatile"
