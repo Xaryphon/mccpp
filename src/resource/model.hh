@@ -7,6 +7,7 @@
 
 #include "resource.hh"
 #include "texture.hh"
+#include "vfs/vfs.hh"
 
 namespace mccpp::resource {
 
@@ -42,32 +43,31 @@ struct model_element {
     model_face east;
 };
 
+struct model_load_data {
+    identifier parent;
+    std::vector<model_element> elements;
+};
+
 class model_object final : public resource {
 public:
-    model_object(manager &, const identifier &, load_flags);
+    static const model_object not_found_sentinel;
+
+    model_object(vfs::vfs &, vfs::tree_node &);
+    void finalize(manager &) override;
+    bool finalized();
 
     void debug_dump();
 
     bool ambient_occlusion() const;
 
-    texture resolve_texture(const std::string &) const;
-
-    handle<model_object> parent();
-    model_object *get_element_array();
-
-    bool has_elements() const {
-        // NOTE: This maybe incorrect since a child might be able to
-        // override parent elements with an empty array
-        return !m_elements.empty();
-    }
-
     const model_element *begin() const { return m_elements.data(); }
     const model_element *end() const { return m_elements.data() + m_elements.size(); }
 
 private:
-    handle<model_object> m_parent = nullptr;
+    model_object();
+
+    std::unique_ptr<model_load_data> m_load_data;
     bool m_ambient_occlusion = true;
-    std::unordered_map<std::string, std::string> m_textures;
     std::vector<model_element> m_elements;
 };
 

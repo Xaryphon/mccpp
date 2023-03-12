@@ -10,23 +10,51 @@
 
 #include "../identifier.hh"
 #include "../utility/runtime_array.hh"
+#include "application.hh"
+#include "vfs/vfs.hh"
 
 namespace mccpp::resource {
+
+class manager;
 
 class resource {
 public:
     virtual ~resource() = default;
+    virtual void finalize(manager &) {}
 };
 
 template<typename T>
 using handle = T *;
 
+class model_object;
+using model = handle<model_object>;
+
 enum class load_flags {
     RESERVED = 0,
 };
 
+template<typename T>
+class container {
+public:
+    container(manager &mgr) : m_manager(mgr) {}
+
+    // empty identifier returns a not found sentinel value
+    handle<T> operator[](const identifier &);
+
+private:
+    manager &m_manager;
+};
+
 class manager {
 public:
+    manager(application &app)
+    : m_assets(app.assets())
+    {}
+
+    void load();
+
+    container<model_object> models() { return *this; }
+
     template<typename T>
     handle<T> get(const identifier &id, load_flags flags = {}) {
         return static_cast<T *>(get_internal(std::type_index(typeid(T)), id, flags, &manager::create_resource<T>));
@@ -61,8 +89,26 @@ private:
         }
     };
 
+    vfs::vfs &m_assets;
     storage_type m_resources;
     std::list<std::pair<std::type_index, const identifier &>> m_init_list;
+
+    template<typename T>
+    friend class container;
 };
+
+template<typename T>
+handle<T> container<T>::operator[](const identifier &id) {
+    if (id.empty()) {
+        // FIXME: remove the const_cast
+        return &const_cast<T &>(T::not_found_sentinel);
+    }
+    T *res = static_cast<T*>(m_manager.get_internal(std::type_index(typeid(T)), id, load_flags::RESERVED, nullptr));
+    return res ? res : &const_cast<T &>(T::not_found_sentinel);
+}
+
+template<>
+[[deprecated("Use models() instead")]]
+handle<model_object> manager::get<model_object>(const identifier &id, load_flags flags);
 
 }

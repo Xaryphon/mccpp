@@ -39,6 +39,8 @@ public:
     void storage(class storage *s) { m_storage = s; }
 
     std::string_view name() { return m_name; }
+    [[nodiscard]]
+    std::string generate_path() const;
     tree_node *parent() { return m_parent; }
 
     auto begin() { return m_entries.cbegin(); }
@@ -71,6 +73,7 @@ public:
     tree_node &root() { return m_root; }
 
     runtime_array<std::byte> read_file(std::string_view);
+    runtime_array<std::byte> read_file(const tree_node &);
 
 private:
     std::vector<std::unique_ptr<storage>> m_storages;

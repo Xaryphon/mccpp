@@ -6,6 +6,10 @@ namespace cvar {
     class manager;
 }
 
+namespace vfs {
+    class vfs;
+}
+
 namespace resource {
     class manager;
 }
@@ -27,6 +31,7 @@ public:
     virtual ~application() = default;
 
     virtual cvar::manager &cvar_manager() = 0;
+    virtual vfs::vfs &assets() = 0;
     virtual resource::manager &resource_manager() = 0;
     virtual class input::manager &input_manager() = 0;
     virtual renderer::renderer &renderer() = 0;

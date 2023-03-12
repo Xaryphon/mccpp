@@ -6,6 +6,8 @@
 
 namespace mccpp::resource {
 
+const model_object model_object::not_found_sentinel {};
+
 static void decode_vec3(glm::vec3 &vec, nlohmann::json &json) {
     assert(json.is_array());
     assert(json.size() == 3);
@@ -54,45 +56,34 @@ static model_face decode_face(nlohmann::json &json) {
     return face;
 }
 
-model_object::model_object(manager &mgr, const identifier &id, load_flags flags) {
-    (void)flags;
-    MCCPP_D("Loading model {}", id.full());
-    auto data = mgr.read_file("{}/models/{}.json", id.name_space(), id.name());
-    auto json = nlohmann::json::parse(data);
-    assert(json.is_object());
+static std::unique_ptr<model_load_data> load_data(nlohmann::json &json) {
+    auto ptr = std::make_unique<model_load_data>();
 
     if (auto iter = json.find("parent"); iter != json.end()) {
         auto &parent_id = *iter;
         assert(parent_id.is_string());
-        handle<model_object> parent = mgr.get<model_object>({ parent_id.get<std::string>() });
-        m_parent = parent;
-        m_ambient_occlusion = parent->m_ambient_occlusion;
-        m_textures = parent->m_textures;
-    }
-
-    if (auto iter = json.find("ambientocclusion"); iter != json.end()) {
-        assert(iter->is_boolean());
-        m_ambient_occlusion = iter->get<bool>();
+        ptr->parent = parent_id.get<std::string>();
     }
 
     if (auto iter = json.find("display"); iter != json.end()) {
         assert(iter->is_object());
     }
 
-    if (auto iter = json.find("textures"); iter != json.end()) {
-        assert(iter->is_object());
-        for (auto &[key, value] : iter->items()) {
-            assert(value.is_string());
-            m_textures[key] = value.get<std::string>();
-        }
-    }
+    // TODO: Load textures
+    //unordered_map<std::string, std::string> textures;
+    //if (auto iter = json.find("textures"); iter != json.end()) {
+    //    assert(iter->is_object());
+    //    for (auto &[key, value] : iter->items()) {
+    //        assert(value.is_string());
+    //        textures[key] = value.get<std::string>();
+    //    }
+    //}
 
     if (auto iter = json.find("elements"); iter != json.end()) {
         assert(iter->is_array());
-        m_elements.clear();
         for (auto &json : *iter) {
             assert(json.is_object());
-            model_element &elem = m_elements.emplace_back();
+            model_element &elem = ptr->elements.emplace_back();
             decode_vec3(elem.from, json["from"]);
             assert(elem.from.x >= -16.f && elem.from.x < 32.f);
             assert(elem.from.y >= -16.f && elem.from.y < 32.f);
@@ -125,16 +116,52 @@ model_object::model_object(manager &mgr, const identifier &id, load_flags flags)
             }
         }
     }
+
+    return ptr;
 }
 
-model_object *model_object::get_element_array() {
-    model_object *elem_model = this;
-    while (elem_model->m_elements.empty()) {
-        elem_model = elem_model->m_parent;
-        if (!elem_model)
-            return nullptr;
+model_object::model_object() {
+
+}
+
+model_object::model_object(vfs::vfs &fs, vfs::tree_node &file) {
+    auto data = fs.read_file(file);
+    auto json = nlohmann::json::parse(data);
+    assert(json.is_object());
+
+    m_load_data = load_data(json);
+
+    if (auto iter = json.find("ambientocclusion"); iter != json.end()) {
+        assert(iter->is_boolean());
+        m_ambient_occlusion = iter->get<bool>();
     }
-    return elem_model;
+}
+
+bool model_object::finalized() {
+    return !bool(m_load_data);
+}
+
+void model_object::finalize(manager &mgr) {
+    if (finalized())
+        return;
+
+    m_elements = std::move(m_load_data->elements);
+
+    if (!m_load_data->parent.empty()) {
+        model parent = mgr.models()[m_load_data->parent];
+        if (!parent->finalized())
+            parent->finalize(mgr);
+        // FIXME: This is an incorrect way of checking if this model did not define elements
+        // but we're probably going to make m_elements be a shared_ptr so it doesn't really matter right now
+        if (m_elements.empty())
+            m_elements = parent->m_elements;
+
+        // According to https://minecraft.fandom.com/wiki/Tutorials/Models#Block_models
+        // ambientocclusion: Whether to use ambient occlusion (true - default), or not (false). Note:only works on Parent file
+        m_ambient_occlusion = parent->m_ambient_occlusion;
+    }
+
+    m_load_data.reset();
 }
 
 static void debug_dump_face(model_face &face) {
@@ -160,20 +187,16 @@ static void debug_dump_face(model_face &face) {
 }
 
 void model_object::debug_dump() {
+    if (this == &not_found_sentinel) {
+        MCCPP_I("MODEL NOT FOUND");
+    }
     MCCPP_I("Ambient Occlusion: {}", m_ambient_occlusion);
-    MCCPP_I("Textures:");
-    for (auto &[key, value] : m_textures) {
-        MCCPP_I("  {}: {}", key, value);
-    }
-    size_t elem_model_nth_parent = 0;
-    model_object *elem_model = this;
-    while (elem_model->m_elements.empty()) {
-        elem_model = elem_model->m_parent;
-        assert(elem_model);
-        elem_model_nth_parent++;
-    }
-    MCCPP_I("Elements: (from {}th parent)", elem_model_nth_parent);
-    for (auto &elem : elem_model->m_elements) {
+    //MCCPP_I("Textures:");
+    //for (auto &[key, value] : m_textures) {
+    //    MCCPP_I("  {}: {}", key, value);
+    //}
+    MCCPP_I("Elements:");
+    for (auto &elem : m_elements) {
         MCCPP_I("- from: {}, {}, {}", elem.from.x, elem.from.y, elem.from.z);
         MCCPP_I("  to: {}, {}, {}", elem.to.x, elem.to.y, elem.to.z);
         //MCCPP_I("  shade: {}", elem.shade);

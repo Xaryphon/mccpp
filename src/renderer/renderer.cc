@@ -106,13 +106,10 @@ static void generate_model_mesh(resource::model model, std::vector<vertex> &vert
 
     model->debug_dump();
 
-    auto *elements = model->get_element_array();
-    assert(elements != nullptr);
-
     glm::vec3 model_offset { 0.f, 0.f, 0.f };
 
     size_t index_start = vertices.size();
-    for (const model_element &elem : *elements) {
+    for (const model_element &elem : *model) {
         glm::vec3 from = model_offset + elem.from / 16.f;
         glm::vec3 to = model_offset + elem.to / 16.f;
         if (should_draw_face(elem.down)) {
@@ -329,7 +326,7 @@ renderer_impl::renderer_impl(application &app)
         return true;
     });
 
-    generate_model_mesh(m_resource_manager.get<resource::model_object>("block/anvil"), m_vertices, m_indicies);
+    generate_model_mesh(m_resource_manager.models()["block/anvil"], m_vertices, m_indicies);
 
     SDL_ShowWindow(m_window);
 }

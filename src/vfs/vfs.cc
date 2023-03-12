@@ -1,7 +1,19 @@
 #include "vfs.hh"
+
+#include <cassert>
+
 #include "logger.hh"
 
 namespace mccpp::vfs {
+
+std::string tree_node::generate_path() const {
+    std::string path(m_name);
+    for (tree_node *parent = m_parent; parent; parent = parent->m_parent) {
+        path.insert(0, "/");
+        path.insert(0, parent->m_name);
+    }
+    return path;
+}
 
 void vfs::build_tree() {
     for (auto &s : m_storages) {
@@ -91,6 +103,28 @@ runtime_array<std::byte> vfs::read_file(std::string_view path) {
     }
 
     return node->storage()->read_file(path);
+}
+
+static tree_node &find_tree_node_root(tree_node &node) {
+    tree_node *ptr = &node;
+    while (ptr->parent() != nullptr)
+        ptr = ptr->parent();
+    return *ptr;
+}
+
+runtime_array<std::byte> vfs::read_file(const tree_node &node_c) {
+    tree_node &node = const_cast<tree_node &>(node_c);
+    assert(&m_root == &find_tree_node_root(node));
+
+    std::string path = node.generate_path();
+
+    if (!node.storage()) {
+        // FIXME: Handle in a better way
+        MCCPP_E("No storage associated (probably a directory): {}", path);
+        return {};
+    }
+
+    return node.storage()->read_file(path);
 }
 
 }

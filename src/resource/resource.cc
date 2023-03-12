@@ -6,32 +6,41 @@
 
 #include "../logger.hh"
 #include "../utility/scope_guard.hh"
+#include "model.hh"
+#include "vfs/vfs.hh"
 
 namespace mccpp::resource {
 
+void manager::load() {
+    for (auto &namespace_node_ptr : m_assets.root()) {
+        auto &namespace_node = *namespace_node_ptr;
+        if (vfs::tree_node *models_node = namespace_node.find("models")) {
+            if (vfs::tree_node *block_node = models_node->find("block")) {
+                for (auto &node_ptr : *block_node) {
+                    auto &node = *node_ptr;
+                    if (!node.name().ends_with(".json")) {
+                        MCCPP_W("Skipping loading of unexpected file assets/{}/models/block/{}", namespace_node.name(), node.name());
+                        continue;
+                    }
+                    auto model = std::make_unique<model_object>(m_assets, node);
+                    std::string_view basename = node.name();
+                    basename.remove_suffix(5);
+                    identifier id = fmt::format("{}:block/{}", namespace_node.name(), basename);
+                    m_resources[{ std::type_index(typeid(model_object)), std::move(id) }] = std::move(model);
+                }
+            }
+        }
+    }
+
+    for (auto &[key, res] : m_resources) {
+        (void)key;
+        res->finalize(*this);
+    }
+}
+
 runtime_array<std::byte> manager::read_file(std::string_view path) {
-    std::filebuf *filebuf;
-    std::ifstream stream;
-    std::string full_path = fmt::format("assets/{}", path);
-    stream.open(full_path, std::ios_base::in | std::ios_base::binary);
-    if (stream.fail()) {
-        MCCPP_E("Failed to open file {}", path);
-        return runtime_array<std::byte>();
-    }
-    filebuf = stream.rdbuf();
-
-    auto size = filebuf->pubseekoff(0, std::ios::end, std::ios::in);
-    if (size < 0) {
-        MCCPP_E("Failed to seek to end of {}", path);
-        return runtime_array<std::byte>();
-    }
-    filebuf->pubseekpos(0, std::ios::in);
-
-    runtime_array<std::byte> buffer { (size_t)size };
-    filebuf->sgetn(reinterpret_cast<char*>(buffer.data()), buffer.size());
-
-    stream.close();
-    return buffer;
+    MCCPP_T("Reading asset \"{}\"", path);
+    return m_assets.read_file(path);
 }
 
 resource *manager::get_internal(std::type_index type, const identifier &id,
@@ -40,6 +49,9 @@ resource *manager::get_internal(std::type_index type, const identifier &id,
     auto iter = m_resources.find({ type, id });
     if (iter != m_resources.end())
         return iter->second.get();
+
+    if (factory == nullptr)
+        return nullptr;
 
     if (std::any_of(m_init_list.begin(), m_init_list.end(), [&type, &id](const auto &item) {
             return item.first == type && item.second == id;
