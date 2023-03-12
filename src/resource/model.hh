@@ -33,7 +33,10 @@ struct model_face {
 struct model_element {
     glm::vec3 from;
     glm::vec3 to;
-    // FIXME: rotation
+    glm::vec3 rotation_origin = {};
+    glm::vec3 rotation_axis = { 1.f, 0.f, 0.f };
+    float rotation_angle = 0;
+    bool rotation_rescale = false;
     bool shade = true;
     model_face down;
     model_face up;

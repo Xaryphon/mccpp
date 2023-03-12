@@ -1,6 +1,7 @@
 #include "model.hh"
 
 #include <nlohmann/json.hpp>
+#include <glm/ext.hpp>
 
 #include "../logger.hh"
 
@@ -92,6 +93,28 @@ static std::unique_ptr<model_load_data> load_data(nlohmann::json &json) {
             assert(elem.from.x >= -16.f && elem.from.x < 32.f);
             assert(elem.from.y >= -16.f && elem.from.y < 32.f);
             assert(elem.from.z >= -16.f && elem.from.z < 32.f);
+
+            if (auto iter = json.find("rotation"); iter != json.end()) {
+                auto &rotation = *iter;
+                assert(iter->is_object());
+                decode_vec3(elem.rotation_origin, rotation["origin"]);
+                std::string &axis = rotation["axis"].get_ref<std::string&>();
+                assert(axis.size() == 1);
+                if (axis[0] == 'x') {
+                    elem.rotation_axis = { 1, 0, 0 };
+                } else if (axis[0] == 'y') {
+                    elem.rotation_axis = { 0, 1, 0 };
+                } else if (axis[0] == 'z') {
+                    elem.rotation_axis = { 0, 0, 1 };
+                } else {
+                    assert(0);
+                }
+                elem.rotation_angle = rotation["angle"].get<float>() / 180.f * glm::pi<float>();
+                if (auto iter = rotation.find("rescale"); iter != rotation.end()) {
+                    assert(iter->is_boolean());
+                    elem.rotation_rescale = iter->get<bool>();
+                }
+            }
 
             if (auto iter = json.find("shade"); iter != json.end()) {
                 assert(iter->is_boolean());
@@ -199,6 +222,9 @@ void model_object::debug_dump() {
     for (auto &elem : m_elements) {
         MCCPP_I("- from: {}, {}, {}", elem.from.x, elem.from.y, elem.from.z);
         MCCPP_I("  to: {}, {}, {}", elem.to.x, elem.to.y, elem.to.z);
+        MCCPP_I("  rotation: {}{}", elem.rotation_angle / glm::pi<float>() * 180.f, elem.rotation_rescale ? " rescale" : "");
+        MCCPP_I("    origin: {}, {}, {}", elem.rotation_origin.x, elem.rotation_origin.y, elem.rotation_origin.z);
+        MCCPP_I("    axis: {}, {}, {}", elem.rotation_axis.x, elem.rotation_axis.y, elem.rotation_axis.z);
         //MCCPP_I("  shade: {}", elem.shade);
         if (elem.down.cullface  != model_cullface::ALWAYS) { MCCPP_I("  down:");  debug_dump_face(elem.down);  }
         if (elem.up.cullface    != model_cullface::ALWAYS) { MCCPP_I("  up:");    debug_dump_face(elem.up);    }

@@ -106,19 +106,35 @@ static void generate_model_mesh(resource::model model, std::vector<vertex> &vert
 
     model->debug_dump();
 
-    glm::vec3 model_offset { 0.f, 0.f, 0.f };
-
     size_t index_start = vertices.size();
     for (const model_element &elem : *model) {
-        glm::vec3 from = model_offset + elem.from / 16.f;
-        glm::vec3 to = model_offset + elem.to / 16.f;
+        glm::vec3 from = elem.from / 16.f - 0.5f;
+        glm::vec3 to = elem.to / 16.f - 0.5f;
+        glm::vec3 rot_origin = elem.rotation_origin / 8.f - 1.f;
+        if (elem.rotation_rescale) {
+            glm::vec3 scale_axes = -elem.rotation_axis + glm::vec3(1.f, 1.f, 1.f);
+            // https://minecraft.fandom.com/wiki/Tutorials/Models#Example:_Sapling
+            // talks about scaling by 1 + 1 / (cos(angle) - 1) but not sure how that
+            // makes any sense but this seems to give a good enough result
+            float scale_by = glm::sec(elem.rotation_angle);
+            glm::vec3 scale = scale_axes * scale_by + elem.rotation_axis;
+            from = from * scale;
+            to = to * scale;
+        }
+        glm::mat4 rot = glm::mat4(1.0f);
+        rot = glm::translate(rot, rot_origin);
+        rot = glm::rotate(rot, elem.rotation_angle, elem.rotation_axis);
+        rot = glm::translate(rot, -rot_origin);
+        auto transform = [&](float x, float y, float z) -> glm::vec3 {
+            return rot * glm::vec4(x, y, z, 1.f);
+        };
         if (should_draw_face(elem.down)) {
-            glm::vec3 normal(0, -1, 0);
+            glm::vec3 normal = transform(0, -1, 0);
             glm::vec3 color(normal * 0.5f + 0.5f);
-            vertices.emplace_back(glm::vec3(from.x, from.y, from.z), normal, color, glm::vec2(0, 0));
-            vertices.emplace_back(glm::vec3(to.x,   from.y, from.z), normal, color, glm::vec2(1, 0));
-            vertices.emplace_back(glm::vec3(from.x, from.y, to.z),   normal, color, glm::vec2(0, 1));
-            vertices.emplace_back(glm::vec3(to.x,   from.y, to.z),   normal, color, glm::vec2(1, 1));
+            vertices.emplace_back(transform(from.x, from.y, from.z), normal, color, glm::vec2(0, 0));
+            vertices.emplace_back(transform(to.x,   from.y, from.z), normal, color, glm::vec2(1, 0));
+            vertices.emplace_back(transform(from.x, from.y, to.z),   normal, color, glm::vec2(0, 1));
+            vertices.emplace_back(transform(to.x,   from.y, to.z),   normal, color, glm::vec2(1, 1));
             indicies.emplace_back(index_start + 0);
             indicies.emplace_back(index_start + 1);
             indicies.emplace_back(index_start + 2);
@@ -128,27 +144,27 @@ static void generate_model_mesh(resource::model model, std::vector<vertex> &vert
             index_start += 4;
         }
         if (should_draw_face(elem.up)) {
-            glm::vec3 normal(0, 1, 0);
+            glm::vec3 normal = transform(0, 1, 0);
             glm::vec3 color(normal * 0.5f + 0.5f);
-            vertices.emplace_back(glm::vec3(from.x, to.y, from.z), normal, color, glm::vec2(0, 0));
-            vertices.emplace_back(glm::vec3(from.x, to.y, to.z),   normal, color, glm::vec2(0, 1));
-            vertices.emplace_back(glm::vec3(to.x,   to.y, from.z), normal, color, glm::vec2(1, 0));
-            vertices.emplace_back(glm::vec3(to.x,   to.y, to.z),   normal, color, glm::vec2(1, 1));
+            vertices.emplace_back(transform(from.x, to.y, from.z), normal, color, glm::vec2(0, 0));
+            vertices.emplace_back(transform(from.x, to.y, to.z),   normal, color, glm::vec2(0, 1));
+            vertices.emplace_back(transform(to.x,   to.y, from.z), normal, color, glm::vec2(1, 0));
+            vertices.emplace_back(transform(to.x,   to.y, to.z),   normal, color, glm::vec2(1, 1));
             indicies.emplace_back(index_start + 0);
             indicies.emplace_back(index_start + 1);
             indicies.emplace_back(index_start + 2);
-            indicies.emplace_back(index_start + 1);
             indicies.emplace_back(index_start + 3);
             indicies.emplace_back(index_start + 2);
+            indicies.emplace_back(index_start + 1);
             index_start += 4;
         }
         if (should_draw_face(elem.north)) {
-            glm::vec3 normal(0, 0, -1);
+            glm::vec3 normal = transform(0, 0, -1);
             glm::vec3 color(normal * 0.5f + 0.5f);
-            vertices.emplace_back(glm::vec3(from.x, from.y, from.z), normal, color, glm::vec2(0, 0));
-            vertices.emplace_back(glm::vec3(from.x, to.y,   from.z), normal, color, glm::vec2(1, 0));
-            vertices.emplace_back(glm::vec3(to.x,   from.y, from.z), normal, color, glm::vec2(0, 1));
-            vertices.emplace_back(glm::vec3(to.x,   to.y,   from.z), normal, color, glm::vec2(1, 1));
+            vertices.emplace_back(transform(from.x, from.y, from.z), normal, color, glm::vec2(0, 0));
+            vertices.emplace_back(transform(from.x, to.y,   from.z), normal, color, glm::vec2(1, 0));
+            vertices.emplace_back(transform(to.x,   from.y, from.z), normal, color, glm::vec2(0, 1));
+            vertices.emplace_back(transform(to.x,   to.y,   from.z), normal, color, glm::vec2(1, 1));
             indicies.emplace_back(index_start + 0);
             indicies.emplace_back(index_start + 1);
             indicies.emplace_back(index_start + 2);
@@ -158,12 +174,12 @@ static void generate_model_mesh(resource::model model, std::vector<vertex> &vert
             index_start += 4;
         }
         if (should_draw_face(elem.south)) {
-            glm::vec3 normal(0, 0, 1);
+            glm::vec3 normal = transform(0, 0, 1);
             glm::vec3 color(normal * 0.5f + 0.5f);
-            vertices.emplace_back(glm::vec3(from.x, from.y, to.z), normal, color, glm::vec2(0, 0));
-            vertices.emplace_back(glm::vec3(to.x,   from.y, to.z), normal, color, glm::vec2(0, 1));
-            vertices.emplace_back(glm::vec3(from.x, to.y,   to.z), normal, color, glm::vec2(1, 0));
-            vertices.emplace_back(glm::vec3(to.x,   to.y,   to.z), normal, color, glm::vec2(1, 1));
+            vertices.emplace_back(transform(from.x, from.y, to.z), normal, color, glm::vec2(0, 0));
+            vertices.emplace_back(transform(to.x,   from.y, to.z), normal, color, glm::vec2(0, 1));
+            vertices.emplace_back(transform(from.x, to.y,   to.z), normal, color, glm::vec2(1, 0));
+            vertices.emplace_back(transform(to.x,   to.y,   to.z), normal, color, glm::vec2(1, 1));
             indicies.emplace_back(index_start + 0);
             indicies.emplace_back(index_start + 1);
             indicies.emplace_back(index_start + 2);
@@ -173,12 +189,12 @@ static void generate_model_mesh(resource::model model, std::vector<vertex> &vert
             index_start += 4;
         }
         if (should_draw_face(elem.east)) {
-            glm::vec3 normal(1, 0, 0);
+            glm::vec3 normal = transform(1, 0, 0);
             glm::vec3 color(normal * 0.5f + 0.5f);
-            vertices.emplace_back(glm::vec3(to.x, from.y, from.z), normal, color, glm::vec2(0, 0));
-            vertices.emplace_back(glm::vec3(to.x, to.y,   from.z), normal, color, glm::vec2(1, 0));
-            vertices.emplace_back(glm::vec3(to.x, from.y, to.z),   normal, color, glm::vec2(0, 1));
-            vertices.emplace_back(glm::vec3(to.x, to.y,   to.z),   normal, color, glm::vec2(1, 1));
+            vertices.emplace_back(transform(to.x, from.y, from.z), normal, color, glm::vec2(0, 0));
+            vertices.emplace_back(transform(to.x, to.y,   from.z), normal, color, glm::vec2(1, 0));
+            vertices.emplace_back(transform(to.x, from.y, to.z),   normal, color, glm::vec2(0, 1));
+            vertices.emplace_back(transform(to.x, to.y,   to.z),   normal, color, glm::vec2(1, 1));
             indicies.emplace_back(index_start + 0);
             indicies.emplace_back(index_start + 1);
             indicies.emplace_back(index_start + 2);
@@ -188,12 +204,12 @@ static void generate_model_mesh(resource::model model, std::vector<vertex> &vert
             index_start += 4;
         }
         if (should_draw_face(elem.west)) {
-            glm::vec3 normal(-1, 0, 0);
+            glm::vec3 normal = transform(-1, 0, 0);
             glm::vec3 color(normal * 0.5f + 0.5f);
-            vertices.emplace_back(glm::vec3(from.x, from.y, from.z), normal, color, glm::vec2(0, 0));
-            vertices.emplace_back(glm::vec3(from.x, from.y, to.z),   normal, color, glm::vec2(0, 1));
-            vertices.emplace_back(glm::vec3(from.x, to.y,   from.z), normal, color, glm::vec2(1, 0));
-            vertices.emplace_back(glm::vec3(from.x, to.y,   to.z),   normal, color, glm::vec2(1, 1));
+            vertices.emplace_back(transform(from.x, from.y, from.z), normal, color, glm::vec2(0, 0));
+            vertices.emplace_back(transform(from.x, from.y, to.z),   normal, color, glm::vec2(0, 1));
+            vertices.emplace_back(transform(from.x, to.y,   from.z), normal, color, glm::vec2(1, 0));
+            vertices.emplace_back(transform(from.x, to.y,   to.z),   normal, color, glm::vec2(1, 1));
             indicies.emplace_back(index_start + 0);
             indicies.emplace_back(index_start + 1);
             indicies.emplace_back(index_start + 2);
@@ -326,7 +342,12 @@ renderer_impl::renderer_impl(application &app)
         return true;
     });
 
-    generate_model_mesh(m_resource_manager.models()["block/anvil"], m_vertices, m_indicies);
+    generate_model_mesh(m_resource_manager.models()["block/cobblestone"], m_vertices, m_indicies);
+    // Dirty hack
+    for (vertex &vert : m_vertices) {
+        vert.position.y -= 1;
+    }
+    generate_model_mesh(m_resource_manager.models()["block/fern"], m_vertices, m_indicies);
 
     SDL_ShowWindow(m_window);
 }
