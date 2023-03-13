@@ -4,6 +4,7 @@ import sys
 import json
 from typing import Dict, List, Union
 from io import TextIOBase
+import os
 
 class Property:
     id: int
@@ -184,6 +185,8 @@ def main(argv) -> None:
 
     with open(blocks_path, "r") as file:
         blocks = parse_blocks(json.load(file), props)
+
+    os.makedirs(os.path.dirname(out_path))
 
     with open(out_path, "w") as file:
         write_cpp(file, props, blocks)
