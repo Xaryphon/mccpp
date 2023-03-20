@@ -14,8 +14,8 @@ namespace mccpp::resource {
 void manager::load() {
     for (auto &namespace_node_ptr : m_assets.root()) {
         auto &namespace_node = *namespace_node_ptr;
-        if (vfs::tree_node *models_node = namespace_node.find("models")) {
-            if (vfs::tree_node *block_node = models_node->find("block")) {
+        if (const vfs::tree_node *models_node = namespace_node.find("models")) {
+            if (const vfs::tree_node *block_node = models_node->find("block")) {
                 for (auto &node_ptr : *block_node) {
                     auto &node = *node_ptr;
                     if (!node.name().ends_with(".json")) {

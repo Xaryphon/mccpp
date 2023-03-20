@@ -12,8 +12,8 @@ public:
         m_root += '/';
     }
 
-    std::unique_ptr<storage_iterator> create_iterator() override;
-    runtime_array<std::byte> read_file(std::string_view) override;
+    std::unique_ptr<storage_iterator> create_iterator() const override;
+    runtime_array<std::byte> read_file(std::string_view) const override;
 
 private:
     std::string m_root;

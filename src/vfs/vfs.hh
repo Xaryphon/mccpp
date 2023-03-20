@@ -20,8 +20,8 @@ public:
 class storage {
 public:
     virtual ~storage() = default;
-    virtual std::unique_ptr<storage_iterator> create_iterator() = 0;
-    virtual runtime_array<std::byte> read_file(std::string_view) = 0;
+    virtual std::unique_ptr<storage_iterator> create_iterator() const = 0;
+    virtual runtime_array<std::byte> read_file(std::string_view) const = 0;
 };
 
 class tree_node {
@@ -30,23 +30,23 @@ public:
     : m_parent(nullptr)
     {}
 
-    tree_node(class tree_node *parent, std::string &&name)
+    tree_node(const tree_node *parent, std::string &&name)
     : m_parent(parent)
     , m_name(std::move(name))
     {}
 
-    class storage *storage() { return m_storage; }
+    const class storage *storage() const { return m_storage; }
     void storage(class storage *s) { m_storage = s; }
 
-    std::string_view name() { return m_name; }
+    std::string_view name() const { return m_name; }
     [[nodiscard]]
     std::string generate_path() const;
-    tree_node *parent() { return m_parent; }
+    const tree_node *parent() const { return m_parent; }
 
-    auto begin() { return m_entries.cbegin(); }
-    auto end() { return m_entries.cend(); }
+    auto begin() const { return m_entries.cbegin(); }
+    auto end() const { return m_entries.cend(); }
 
-    tree_node *find(std::string_view name) {
+    const tree_node *find(std::string_view name) const {
         for (auto &entry : m_entries) {
             if (entry->name() == name)
                 return entry.get();
@@ -59,7 +59,7 @@ public:
     }
 
 private:
-    class tree_node *const m_parent;
+    const tree_node *const m_parent;
     const std::string m_name;
     class storage *m_storage = nullptr;
     std::vector<std::unique_ptr<tree_node>> m_entries;
@@ -70,8 +70,9 @@ public:
     std::vector<std::unique_ptr<storage>> &storages() { return m_storages; }
     void build_tree();
 
-    tree_node &root() { return m_root; }
+    const tree_node &root() { return m_root; }
 
+    const tree_node *find_file(std::string_view) const;
     runtime_array<std::byte> read_file(std::string_view);
     runtime_array<std::byte> read_file(const tree_node &);
 

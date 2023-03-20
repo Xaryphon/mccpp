@@ -92,11 +92,11 @@ private:
     dirent *m_dirent;
 };
 
-std::unique_ptr<storage_iterator> host_storage::create_iterator() {
+std::unique_ptr<storage_iterator> host_storage::create_iterator() const {
     return host_storage_iterator::create(std::string(m_root));
 }
 
-runtime_array<std::byte> host_storage::read_file(std::string_view path) {
+runtime_array<std::byte> host_storage::read_file(std::string_view path) const {
     std::filebuf *filebuf;
     std::ifstream stream;
     std::string full_path = m_root;
