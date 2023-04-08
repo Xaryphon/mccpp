@@ -31,8 +31,8 @@ public:
 
     size_t count() { return flags() & COUNT_MASK; }
 
-    const char *name() { return impl::property::name[m_id]; }
-    const char *key() { return impl::property::key[m_id]; }
+    const char *name() const { return impl::property::name[m_id]; }
+    const char *key() const { return impl::property::key[m_id]; }
 
     const char *const *begin() {
         assert(is_enum());
@@ -61,8 +61,8 @@ public:
     , m_value(value)
     {}
 
-    class property property() { return m_property; }
-    size_t value() { return m_value; }
+    class property property() const { return m_property; }
+    size_t value() const { return m_value; }
 
 private:
     class property m_property;
