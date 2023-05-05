@@ -1,7 +1,8 @@
 FetchContent_Declare(
     artic_data
     GIT_REPOSITORY https://github.com/Articdive/ArticData.git
-    GIT_TAG        3c3d6007810dc0ef90373be46a9e49a4668067d8 # branch 1.19.3 2023-02-24
+    GIT_TAG        1.19.3 # NOTE: Using a commit hash doesn't work as upstream removes old commits
+                          # Look into using the generators instead
     CONFIGURE_COMMAND ""
     BUILD_COMMAND ""
     INSTALL_COMMAND ""
